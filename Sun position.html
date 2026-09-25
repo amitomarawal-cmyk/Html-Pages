@@ -1,0 +1,429 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>সূর্য ও চাঁদ ফাইন্ডার — বাংলাদেশ (AR)</title>
+<style>
+  :root{--bg:#0e1116;--card:#161a21;--border:#262b34;--text:#eef0f3;--sub:#9aa4b2;--accent:#2fae7a;--gold:#e2b23a;}
+  *{box-sizing:border-box;}
+  html,body{height:100%;margin:0;background:var(--bg);color:var(--text);font-family:"Noto Sans Bengali",-apple-system,Roboto,sans-serif;}
+  .wrap{max-width:520px;margin:0 auto;padding:16px 14px 40px;}
+  h1{font-size:19px;text-align:center;margin:6px 0 2px;}
+  p.sub{color:var(--sub);text-align:center;font-size:12.5px;margin:0 0 16px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;margin-bottom:14px;}
+  select{width:100%;padding:12px;border-radius:10px;background:#0d1014;color:var(--text);border:1px solid var(--border);font-size:15px;}
+  button{width:100%;padding:14px;border-radius:10px;border:none;background:var(--accent);color:#04140c;font-weight:700;font-size:15px;margin-top:12px;cursor:pointer;}
+  button.secondary{background:#0d1014;color:var(--text);border:1px solid var(--border);}
+  .msg{font-size:12.5px;color:var(--sub);margin-top:10px;line-height:1.6;text-align:center;}
+  .err{color:#ff8a7a;}
+  #arScreen{display:none;position:fixed;inset:0;background:#000;z-index:10;}
+  #cam{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;}
+  #overlay{position:absolute;inset:0;width:100%;height:100%;}
+  #hud{position:absolute;top:0;left:0;right:0;padding:14px;padding-top:calc(14px + env(safe-area-inset-top,0px));display:flex;justify-content:space-between;gap:8px;}
+  .pill{background:rgba(14,17,22,.75);border:1px solid var(--border);border-radius:10px;padding:8px 12px;font-size:12px;backdrop-filter:blur(4px);}
+  .pill b{display:block;font-size:14px;}
+  #closeBtn{position:absolute;bottom:0;left:0;right:0;padding:16px;padding-bottom:calc(16px + env(safe-area-inset-bottom,0px));}
+  #closeBtn button{background:#0d1014;color:var(--text);border:1px solid var(--border);}
+  #compassBar{position:absolute;bottom:80px;left:0;right:0;text-align:center;font-size:12px;color:var(--gold);}
+</style>
+</head>
+<body>
+<div class="wrap" id="setupScreen">
+  <h1>🌞🌙 সূর্য ও চাঁদ ফাইন্ডার</h1>
+  <p class="sub">বাংলাদেশের যেকোনো জেলা থেকে — ফোন আকাশের দিকে ধরলে সূর্য ও চাঁদ কোথায় আছে তা দেখুন</p>
+  <div class="card">
+    <select id="districtSel"></select>
+    <button id="startBtn">📷 আকাশে দেখুন (AR চালু করুন)</button>
+    <div class="msg" id="statusMsg">জেলা নির্বাচন করে বাটনে চাপুন। ক্যামেরা ও সেন্সর পারমিশন চাইবে।</div>
+  </div>
+  <div class="card">
+    <div id="infoBox" class="msg">—</div>
+  </div>
+  <div class="msg">ক্যামেরা পারমিশন না দিলেও নিচের তথ্য থেকে সূর্য/চাঁদের কৌণিক অবস্থান (দিক ও উচ্চতা) জানা যাবে।</div>
+</div>
+
+<div id="arScreen">
+  <video id="cam" autoplay playsinline muted></video>
+  <canvas id="overlay"></canvas>
+  <div id="hud">
+    <div class="pill">☀️ সূর্য<b id="sunHud">—</b></div>
+    <div class="pill">🌙 চাঁদ<b id="moonHud">—</b></div>
+  </div>
+  <div id="compassBar">দিক: — °</div>
+  <div id="legend" style="position:absolute;bottom:110px;left:10px;right:10px;font-size:10.5px;color:#ccc;background:rgba(14,17,22,.6);border-radius:8px;padding:6px 10px;line-height:1.7;">
+    <span style="color:#ffcf4d;">■</span> সূর্যের কক্ষপথ&nbsp;&nbsp;
+    <span style="color:#a0beff;">■</span> চাঁদের কক্ষপথ&nbsp;&nbsp;
+    <span style="color:#fff;">—</span> দিগন্ত&nbsp;&nbsp;
+    <span style="color:#50c8ff;">┊</span> দিক-রেখা (আজিমুথ)&nbsp;&nbsp;
+    <span style="color:#c878ff;">┊</span> উচ্চতা-রেখা (অল্টিটিউড)
+  </div>
+  <div id="closeBtn"><button id="stopBtn">✕ বন্ধ করুন</button></div>
+</div>
+
+<script>
+// ---------- districts (approx lat/lon) ----------
+const DISTRICTS = [
+["ঢাকা",23.8103,90.4125],["গাজীপুর",24.0022,90.4264],["নারায়ণগঞ্জ",23.6238,90.5000],["টাঙ্গাইল",24.2513,89.9167],
+["মুন্সিগঞ্জ",23.5500,90.5300],["মানিকগঞ্জ",23.8600,90.0000],["নরসিংদী",23.9200,90.7200],["কিশোরগঞ্জ",24.4400,90.7800],
+["ফরিদপুর",23.6000,89.8400],["গোপালগঞ্জ",23.0100,89.8300],["মাদারীপুর",23.1600,90.1900],["রাজবাড়ী",23.7600,89.6500],
+["শরীয়তপুর",23.2400,90.4300],["চট্টগ্রাম",22.3569,91.7832],["কক্সবাজার",21.4400,92.0100],["কুমিল্লা",23.4600,91.1800],
+["ফেনী",23.0200,91.4000],["নোয়াখালী",22.8700,91.1000],["লক্ষ্মীপুর",22.9400,90.8300],["চাঁদপুর",23.2300,90.6500],
+["ব্রাহ্মণবাড়িয়া",23.9600,91.1100],["রাঙ্গামাটি",22.6500,92.1700],["বান্দরবান",22.2000,92.2200],["খাগড়াছড়ি",23.1200,91.9800],
+["রাজশাহী",24.3745,88.6042],["নাটোর",24.4200,88.9900],["নওগাঁ",24.7900,88.9400],["চাঁপাইনবাবগঞ্জ",24.6000,88.2800],
+["পাবনা",23.9900,89.2300],["বগুড়া",24.8500,89.3700],["সিরাজগঞ্জ",24.4500,89.7000],["জয়পুরহাট",25.1000,89.0200],
+["খুলনা",22.8456,89.5403],["বাগেরহাট",22.6500,89.7900],["সাতক্ষীরা",22.7200,89.0700],["যশোর",23.1700,89.2100],
+["ঝিনাইদহ",23.5400,89.1500],["মাগুরা",23.4900,89.4200],["নড়াইল",23.1700,89.5100],["কুষ্টিয়া",23.9000,89.1200],
+["চুয়াডাঙ্গা",23.6400,88.8400],["মেহেরপুর",23.7600,88.6300],["বরিশাল",22.7010,90.3535],["ভোলা",22.6800,90.6500],
+["পটুয়াখালী",22.3600,90.3300],["পিরোজপুর",22.5800,89.9700],["ঝালকাঠি",22.6400,90.2000],["বরগুনা",22.1600,90.1100],
+["সিলেট",24.8949,91.8687],["মৌলভীবাজার",24.4800,91.7800],["হবিগঞ্জ",24.3800,91.4200],["সুনামগঞ্জ",25.0700,91.4000],
+["রংপুর",25.7439,89.2752],["দিনাজপুর",25.6300,88.6400],["কুড়িগ্রাম",25.8100,89.6300],["গাইবান্ধা",25.3300,89.5300],
+["নীলফামারী",25.9300,88.8600],["পঞ্চগড়",26.3400,88.5500],["ঠাকুরগাঁও",26.0300,88.4700],["লালমনিরহাট",25.9200,89.4400],
+["ময়মনসিংহ",24.7471,90.4203],["জামালপুর",24.9400,89.9400],["নেত্রকোণা",24.8700,90.7300],["শেরপুর",25.0200,90.0200]
+];
+const sel = document.getElementById('districtSel');
+DISTRICTS.forEach((d,i)=>{ const o=document.createElement('option'); o.value=i; o.textContent=d[0]; sel.appendChild(o); });
+sel.value = 0; // ঢাকা default
+
+// ---------- angle helpers ----------
+const D2R=Math.PI/180, R2D=180/Math.PI;
+const s=d=>Math.sin(d*D2R), c=d=>Math.cos(d*D2R), t=d=>Math.tan(d*D2R);
+const asinD=x=>R2D*Math.asin(Math.max(-1,Math.min(1,x)));
+const atan2D=(y,x)=>R2D*Math.atan2(y,x);
+const norm360=a=>{a=a%360; return a<0?a+360:a;};
+
+function julianDate(date){ return date.getTime()/86400000 + 2440587.5; }
+
+// ---------- Sun position (low precision, Meeus) ----------
+function sunAltAz(date, lat, lon){
+  const jd = julianDate(date);
+  const D = jd - 2451545.0;
+  const g = norm360(357.529 + 0.98560028*D);
+  const q = norm360(280.459 + 0.98564736*D);
+  const L = norm360(q + 1.915*s(g) + 0.020*s(2*g));
+  const e = 23.439 - 0.00000036*D;
+  const RA = norm360(atan2D(c(e)*s(L), c(L)));
+  const Dec = asinD(s(e)*s(L));
+  const GMST = norm360(280.46061837 + 360.98564736629*D);
+  const LST = norm360(GMST + lon);
+  const H = norm360(LST - RA);
+  const alt = asinD(s(lat)*s(Dec) + c(lat)*c(Dec)*c(H));
+  let az = atan2D(-s(H), c(lat)*t(Dec) - s(lat)*c(H));
+  az = norm360(az);
+  return {alt, az};
+}
+
+// ---------- Moon position (low precision, ELP2000 truncated) ----------
+function moonAltAz(date, lat, lon){
+  const jd = julianDate(date);
+  const D0 = jd - 2451545.0;
+  const T = D0/36525;
+  const Lp = norm360(218.3164477 + 481267.88123421*T);
+  const Dm = norm360(297.8501921 + 445267.1114034*T);
+  const M  = norm360(357.5291092 + 35999.0502909*T);
+  const Mp = norm360(134.9633964 + 477198.8675055*T);
+  const F  = norm360(93.2720950 + 483202.0175233*T);
+  let lon_ = Lp
+    + 6.289*s(Mp) - 1.274*s(2*Dm-Mp) + 0.658*s(2*Dm) - 0.186*s(M)
+    - 0.059*s(2*Mp-2*Dm) - 0.057*s(Mp-2*Dm+M) + 0.053*s(Mp+2*Dm)
+    + 0.046*s(2*Dm-M) + 0.041*s(Mp-M) - 0.035*s(Dm) - 0.031*s(Mp+M);
+  lon_ = norm360(lon_);
+  let lat_ = 5.128*s(F) + 0.280*s(Mp+F) + 0.277*s(Mp-F) + 0.173*s(2*Dm-F);
+  const e = 23.439 - 0.0000004*D0;
+  const RA = norm360(atan2D(s(lon_)*c(e) - t(lat_)*s(e), c(lon_)));
+  const Dec = asinD(s(lat_)*c(e) + c(lat_)*s(e)*s(lon_));
+  const GMST = norm360(280.46061837 + 360.98564736629*D0);
+  const LST = norm360(GMST + lon);
+  const H = norm360(LST - RA);
+  const alt = asinD(s(lat)*s(Dec) + c(lat)*c(Dec)*c(H));
+  let az = atan2D(-s(H), c(lat)*t(Dec) - s(lat)*c(H));
+  az = norm360(az);
+  return {alt, az};
+}
+
+function bn(n){ const d={'0':'০','1':'১','2':'২','3':'৩','4':'৪','5':'৫','6':'৬','7':'৭','8':'৮','9':'৯','-':'-'}; return String(n).replace(/[0-9-]/g,x=>d[x]); }
+function dirName(az){
+  const dirs=['উত্তর','উত্তর-পূর্ব','পূর্ব','দক্ষিণ-পূর্ব','দক্ষিণ','দক্ষিণ-পশ্চিম','পশ্চিম','উত্তর-পশ্চিম'];
+  return dirs[Math.round(az/45)%8];
+}
+
+function currentCoords(){
+  const d = DISTRICTS[sel.value];
+  return {name:d[0], lat:d[1], lon:d[2]};
+}
+
+function updateInfoBox(){
+  const {name,lat,lon} = currentCoords();
+  const now = new Date();
+  const sun = sunAltAz(now, lat, lon);
+  const moon = moonAltAz(now, lat, lon);
+  document.getElementById('infoBox').innerHTML =
+    `<b>${name}</b> — এখনকার অবস্থান<br>`+
+    `☀️ সূর্য: উচ্চতা ${bn(sun.alt.toFixed(1))}°, দিক ${bn(sun.az.toFixed(0))}° (${dirName(sun.az)}) ${sun.alt<0?' — দিগন্তের নিচে':''}<br>`+
+    `🌙 চাঁদ: উচ্চতা ${bn(moon.alt.toFixed(1))}°, দিক ${bn(moon.az.toFixed(0))}° (${dirName(moon.az)}) ${moon.alt<0?' — দিগন্তের নিচে':''}`;
+}
+updateInfoBox();
+sel.onchange = updateInfoBox;
+setInterval(updateInfoBox, 15000);
+
+// ---------- AR screen ----------
+const setupScreen = document.getElementById('setupScreen');
+const arScreen = document.getElementById('arScreen');
+const video = document.getElementById('cam');
+const canvas = document.getElementById('overlay');
+const ctx = canvas.getContext('2d');
+const statusMsg = document.getElementById('statusMsg');
+
+let heading = 0, pitch = 0, haveOrientation = false;
+let stream = null;
+let smHeadX = null, smHeadY = null, smPitch = null; // smoothing state (circular-safe)
+const SMOOTH = 0.25; // 0..1, higher = snappier, lower = steadier
+
+function screenAngle(){
+  if (screen.orientation && typeof screen.orientation.angle === 'number') return screen.orientation.angle;
+  if (typeof window.orientation === 'number') return window.orientation;
+  return 0;
+}
+
+function resizeCanvas(){ canvas.width = window.innerWidth; canvas.height = window.innerHeight; }
+window.addEventListener('resize', resizeCanvas);
+
+// Full tilt-compensated compass heading + camera pitch, valid for any device
+// orientation (vertical, tilted, flat on a table, upside down, landscape...).
+function tiltCompensatedHeading(alphaDeg, betaDeg, gammaDeg, screenAngDeg){
+  const alpha = (alphaDeg + screenAngDeg) * D2R; // compensate for screen rotation
+  const beta = betaDeg * D2R;
+  const gamma = gammaDeg * D2R;
+  const cA=Math.cos(alpha), sA=Math.sin(alpha);
+  const cB=Math.cos(beta), sB=Math.sin(beta);
+  const cG=Math.cos(gamma), sG=Math.sin(gamma);
+  // World-frame "forward" (out of the back camera) and "up" derived from the
+  // standard ZXY device-orientation rotation matrix.
+  const Vx = -cA*sG - sA*sB*cG;
+  const Vy = -sA*sG + cA*sB*cG;
+  let heading = atan2D(Vx, Vy);
+  heading = norm360(heading);
+  // pitch: angle of the camera's line-of-sight above/below the horizon
+  const pitch = asinD(-(cB*cG));
+  return {heading, pitch};
+}
+
+function handleOrientation(e){
+  haveOrientation = true;
+  let hRaw, pRaw;
+  if (typeof e.webkitCompassHeading === 'number') {
+    // iOS already gives a tilt-compensated true heading.
+    hRaw = e.webkitCompassHeading;
+    pRaw = (e.beta !== null && e.gamma !== null)
+      ? asinD(-(Math.cos(e.beta*D2R)*Math.cos(e.gamma*D2R)))
+      : Math.max(-90, Math.min(90, (e.beta||0) - 90));
+  } else if (e.alpha !== null) {
+    const r = tiltCompensatedHeading(e.alpha, e.beta||0, e.gamma||0, screenAngle());
+    hRaw = r.heading;
+    pRaw = r.pitch;
+  } else {
+    return;
+  }
+  // exponential smoothing on the unit circle to avoid the 0/360 wrap glitch
+  const rad = hRaw*D2R;
+  const x = Math.cos(rad), y = Math.sin(rad);
+  smHeadX = (smHeadX===null) ? x : smHeadX + SMOOTH*(x-smHeadX);
+  smHeadY = (smHeadY===null) ? y : smHeadY + SMOOTH*(y-smHeadY);
+  heading = norm360(atan2D(smHeadY, smHeadX));
+  smPitch = (smPitch===null) ? pRaw : smPitch + SMOOTH*(pRaw-smPitch);
+  pitch = Math.max(-90, Math.min(90, smPitch));
+}
+
+async function startAR(){
+  statusMsg.textContent = 'পারমিশন চাওয়া হচ্ছে...';
+  statusMsg.classList.remove('err');
+  try{
+    // camera
+    stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}, audio:false});
+    video.srcObject = stream;
+  }catch(err){
+    statusMsg.textContent = 'ক্যামেরা পারমিশন পাওয়া যায়নি। ব্রাউজার সেটিংসে অনুমতি দিন।';
+    statusMsg.classList.add('err');
+    return;
+  }
+  // orientation sensor permission (iOS)
+  try{
+    if (typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function'){
+      const res = await DeviceOrientationEvent.requestPermission();
+      if (res !== 'granted'){
+        statusMsg.textContent = 'সেন্সর (Motion & Orientation) পারমিশন দরকার।';
+        statusMsg.classList.add('err');
+        if(stream) stream.getTracks().forEach(tr=>tr.stop());
+        return;
+      }
+    }
+  }catch(err){}
+  window.addEventListener('deviceorientationabsolute', handleOrientation, true);
+  window.addEventListener('deviceorientation', handleOrientation, true);
+
+  setupScreen.style.display='none';
+  arScreen.style.display='block';
+  resizeCanvas();
+  requestAnimationFrame(drawLoop);
+}
+
+function stopAR(){
+  if(stream) stream.getTracks().forEach(tr=>tr.stop());
+  window.removeEventListener('deviceorientationabsolute', handleOrientation, true);
+  window.removeEventListener('deviceorientation', handleOrientation, true);
+  arScreen.style.display='none';
+  setupScreen.style.display='block';
+}
+
+const FOV_H = 60, FOV_V = 45; // approx camera field of view in degrees
+
+// ---------- day path (orbit track) cache ----------
+let pathCacheKey = null, sunPath = [], moonPath = [];
+function computePath(date, lat, lon, fn){
+  const path = [];
+  const base = new Date(date); base.setHours(0,0,0,0);
+  for(let m=0; m<=24*60; m+=10){
+    const t = new Date(base.getTime() + m*60000);
+    const pos = fn(t, lat, lon);
+    path.push({time:t, az:pos.az, alt:pos.alt});
+  }
+  return path;
+}
+function ensurePaths(){
+  const {lat, lon} = currentCoords();
+  const now = new Date();
+  const key = sel.value + '_' + now.toDateString();
+  if (key !== pathCacheKey){
+    pathCacheKey = key;
+    sunPath = computePath(now, lat, lon, sunAltAz);
+    moonPath = computePath(now, lat, lon, moonAltAz);
+  }
+}
+
+function project(az, alt){
+  let dAz = az - heading; dAz = ((dAz+540)%360)-180;
+  const dAlt = alt - pitch;
+  const x = canvas.width/2 + (dAz/(FOV_H/2))*(canvas.width/2);
+  const y = canvas.height/2 - (dAlt/(FOV_V/2))*(canvas.height/2);
+  const visible = Math.abs(dAz) <= FOV_H/2+2 && Math.abs(dAlt) <= FOV_V/2+2;
+  return {x, y, visible};
+}
+
+function drawHorizon(){
+  if (Math.abs(0-pitch) > FOV_V/2+5) return;
+  const p = project(heading, 0);
+  ctx.strokeStyle = 'rgba(255,255,255,.75)';
+  ctx.lineWidth = 2;
+  ctx.setLineDash([]);
+  ctx.beginPath(); ctx.moveTo(0,p.y); ctx.lineTo(canvas.width,p.y); ctx.stroke();
+  ctx.fillStyle = '#fff'; ctx.font = '12px sans-serif'; ctx.textAlign = 'left';
+  ctx.fillText('দিগন্ত রেখা', 6, p.y-6);
+}
+
+function drawAzimuthGrid(){
+  ctx.font = '12px sans-serif';
+  for(let a=0; a<360; a+=45){
+    if (Math.abs(((a-heading+540)%360)-180) > FOV_H/2+5) continue;
+    const p = project(a, pitch);
+    ctx.strokeStyle = 'rgba(80,200,255,.35)';
+    ctx.setLineDash([5,5]);
+    ctx.beginPath(); ctx.moveTo(p.x,0); ctx.lineTo(p.x,canvas.height); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#50c8ff'; ctx.textAlign = 'center';
+    ctx.fillText(dirName(a), p.x, 18);
+  }
+}
+
+function drawAltitudeGrid(){
+  ctx.font = '11px sans-serif';
+  for(let alt=-60; alt<=75; alt+=15){
+    if (alt===0) continue;
+    if (Math.abs(alt-pitch) > FOV_V/2+5) continue;
+    const p = project(heading, alt);
+    ctx.strokeStyle = 'rgba(200,120,255,.3)';
+    ctx.setLineDash([5,5]);
+    ctx.beginPath(); ctx.moveTo(0,p.y); ctx.lineTo(canvas.width,p.y); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#c878ff'; ctx.textAlign = 'left';
+    ctx.fillText(bn(alt)+'°', 6, p.y-4);
+  }
+}
+
+function drawPathTrack(path, color){
+  ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.setLineDash([]);
+  ctx.beginPath();
+  let started = false;
+  for(const pt of path){
+    const p = project(pt.az, pt.alt);
+    if (!p.visible){ started = false; continue; }
+    if (!started){ ctx.moveTo(p.x,p.y); started = true; } else { ctx.lineTo(p.x,p.y); }
+  }
+  ctx.stroke();
+  ctx.font = '10px sans-serif'; ctx.textAlign = 'center';
+  for(const pt of path){
+    if (pt.time.getMinutes() !== 0) continue;
+    const p = project(pt.az, pt.alt);
+    if (!p.visible) continue;
+    ctx.fillStyle = color;
+    ctx.beginPath(); ctx.arc(p.x,p.y,3,0,Math.PI*2); ctx.fill();
+    ctx.fillStyle = '#fff';
+    ctx.fillText(bn(String(pt.time.getHours()).padStart(2,'0'))+':০০', p.x, p.y-8);
+  }
+}
+
+function drawMarker(az, alt, label, color, size){
+  let dAz = az - heading;
+  dAz = ((dAz+540)%360)-180; // shortest angular diff
+  const dAlt = alt - pitch;
+  if (Math.abs(dAz) > FOV_H/2+10 || Math.abs(dAlt) > FOV_V/2+10) return;
+  const x = canvas.width/2 + (dAz/(FOV_H/2))*(canvas.width/2);
+  const y = canvas.height/2 - (dAlt/(FOV_V/2))*(canvas.height/2);
+  ctx.beginPath();
+  ctx.arc(x,y,size,0,Math.PI*2);
+  ctx.fillStyle = color;
+  ctx.globalAlpha = 0.85;
+  ctx.fill();
+  ctx.globalAlpha = 1;
+  ctx.font = '14px sans-serif';
+  ctx.fillStyle = '#fff';
+  ctx.textAlign = 'center';
+  ctx.fillText(label, x, y+size+16);
+}
+
+function drawLoop(){
+  if (arScreen.style.display !== 'block') return;
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  const {lat,lon} = currentCoords();
+  const now = new Date();
+  const sun = sunAltAz(now, lat, lon);
+  const moon = moonAltAz(now, lat, lon);
+  ensurePaths();
+
+  drawAzimuthGrid();
+  drawAltitudeGrid();
+  drawHorizon();
+  drawPathTrack(sunPath, 'rgba(255,207,77,.85)');
+  drawPathTrack(moonPath, 'rgba(160,190,255,.85)');
+
+  // center crosshair
+  ctx.strokeStyle = 'rgba(255,255,255,.4)';
+  ctx.beginPath();
+  ctx.moveTo(canvas.width/2-10, canvas.height/2); ctx.lineTo(canvas.width/2+10, canvas.height/2);
+  ctx.moveTo(canvas.width/2, canvas.height/2-10); ctx.lineTo(canvas.width/2, canvas.height/2+10);
+  ctx.stroke();
+
+  drawMarker(sun.az, sun.alt, 'সূর্য', '#ffcf4d', 26);
+  drawMarker(moon.az, moon.alt, 'চাঁদ', '#d9e2ec', 20);
+
+  document.getElementById('sunHud').textContent = `${bn(sun.alt.toFixed(0))}° ${dirName(sun.az)}`;
+  document.getElementById('moonHud').textContent = `${bn(moon.alt.toFixed(0))}° ${dirName(moon.az)}`;
+  document.getElementById('compassBar').textContent = 'দিক: ' + bn(heading.toFixed(0)) + '° ' + dirName(heading) + (haveOrientation?'':' (সেন্সর পাওয়া যায়নি)');
+
+  requestAnimationFrame(drawLoop);
+}
+
+document.getElementById('startBtn').onclick = startAR;
+document.getElementById('stopBtn').onclick = stopAR;
+</script>
+</body>
+</html>

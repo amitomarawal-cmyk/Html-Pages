@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0f3d3e">
+<title>আবহাওয়া</title>
+<style>
+:root{--bg:#eef4f2;--card:#fff;--ink:#12302f;--mute:#5d7775;--line:#d5e3df;--brand:#0f3d3e;--on:#fff;--cold:#4aa3df;--hot:#f2994a;--track:#dfe9e6}
+@media(prefers-color-scheme:dark){:root{--bg:#0c1615;--card:#15252a;--ink:#e6f2ef;--mute:#8fa9a5;--line:#243a3d;--brand:#0f3d3e;--track:#22383a}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0}
+body{font-family:"Noto Sans Bengali","Hind Siliguri",system-ui,sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;padding-bottom:env(safe-area-inset-bottom)}
+header{background:var(--brand);color:var(--on);padding:calc(env(safe-area-inset-top,0px) + 14px) 16px 22px;border-radius:0 0 28px 28px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.loc{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.14);border:0;color:inherit;font:inherit;font-size:15px;padding:10px 14px;border-radius:24px;max-width:75%}
+.loc span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.icon{width:42px;height:42px;border-radius:50%;border:0;background:rgba(255,255,255,.14);color:inherit;font-size:20px}
+.icon.spin{animation:s 1s linear infinite}@keyframes s{to{transform:rotate(360deg)}}
+.now{text-align:center;padding:22px 0 4px}
+.now .e{font-size:64px;line-height:1}
+.now .t{font-size:56px;font-weight:600;margin-top:6px}
+.now .d{opacity:.85;font-size:15px}
+main{padding:16px}
+.card{background:var(--card);border-radius:20px;padding:6px 16px}
+.day{display:grid;grid-template-columns:64px 30px 38px 1fr 38px;align-items:center;gap:8px;padding:14px 0;border-bottom:1px solid var(--line)}
+.day:last-child{border:0}
+.day b{font-weight:600;font-size:15px}
+.day small{display:block;color:var(--mute);font-size:12px}
+.day .ic{font-size:22px;text-align:center}
+.lo{text-align:right;color:var(--mute)}
+.hi{font-weight:600}
+.track{height:8px;border-radius:8px;background:var(--track);position:relative}
+.fill{position:absolute;top:0;bottom:0;border-radius:8px;background:linear-gradient(90deg,var(--cold),var(--hot))}
+.meta{color:var(--mute);font-size:12.5px;text-align:center;margin:14px 0 0;line-height:1.6}
+.msg{padding:28px 8px;text-align:center;color:var(--mute)}
+.btn{background:var(--brand);color:var(--on);border:0;border-radius:24px;font:inherit;padding:12px 20px;margin-top:12px}
+dialog{border:0;border-radius:24px;padding:0;width:min(92vw,420px);background:var(--card);color:var(--ink);margin:auto auto 0}
+dialog::backdrop{background:rgba(0,0,0,.45)}
+.sheet{padding:20px 16px 24px}
+.sheet h2{margin:0 0 14px;font-size:18px}
+.search{width:100%;font:inherit;font-size:16px;padding:13px 14px;border-radius:14px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+.gps{width:100%;margin:10px 0;text-align:left;background:none;border:1px solid var(--line);color:var(--ink);font:inherit;padding:13px 14px;border-radius:14px}
+.res{list-style:none;margin:6px 0 0;padding:0;max-height:40vh;overflow:auto}
+.res li{padding:12px 6px;border-bottom:1px solid var(--line)}
+.res li:active{background:var(--track)}
+.res small{color:var(--mute);display:block}
+.close{float:right;background:none;border:0;color:var(--mute);font:inherit;font-size:15px}
+</style>
+</head>
+<body>
+<header>
+  <div class="row">
+    <button class="loc" id="locBtn" aria-label="জায়গা পরিবর্তন">📍 <span id="locName">জায়গা নির্বাচন করুন</span></button>
+    <button class="icon" id="refBtn" aria-label="রিফ্রেশ">⟳</button>
+  </div>
+  <div class="now" id="now"></div>
+</header>
+<main>
+  <div class="card" id="list"><div class="msg">জায়গা নির্বাচন করলে আগামী ৭ দিনের আবহাওয়া এখানে দেখাবে।<br><button class="btn" id="startBtn">জায়গা নির্বাচন</button></div></div>
+  <p class="meta" id="meta"></p>
+</main>
+
+<dialog id="dlg">
+  <div class="sheet">
+    <button class="close" id="closeBtn">বন্ধ</button>
+    <h2>জায়গা নির্বাচন</h2>
+    <button class="gps" id="gpsBtn">🎯 আমার বর্তমান লোকেশন</button>
+    <input class="search" id="q" type="search" placeholder="শহরের নাম লিখুন (যেমন: ঢাকা)" autocomplete="off">
+    <ul class="res" id="res"></ul>
+  </div>
+</dialog>
+
+<script>
+const KEY='wx_app_v1', DAY=864e5, TTL=7*DAY;
+const $=id=>document.getElementById(id);
+const bn=(n)=>Number(n).toLocaleString('bn-BD');
+const WC={0:['☀️','পরিষ্কার আকাশ'],1:['🌤️','প্রায় পরিষ্কার'],2:['⛅','আংশিক মেঘলা'],3:['☁️','মেঘলা'],45:['🌫️','কুয়াশা'],48:['🌫️','ঘন কুয়াশা'],51:['🌦️','হালকা গুঁড়িগুঁড়ি বৃষ্টি'],53:['🌦️','গুঁড়িগুঁড়ি বৃষ্টি'],55:['🌧️','ঘন গুঁড়িগুঁড়ি বৃষ্টি'],56:['🌧️','ঠান্ডা বৃষ্টি'],57:['🌧️','ঠান্ডা বৃষ্টি'],61:['🌧️','হালকা বৃষ্টি'],63:['🌧️','বৃষ্টি'],65:['🌧️','ভারী বৃষ্টি'],66:['🌧️','হিমশীতল বৃষ্টি'],67:['🌧️','হিমশীতল ভারী বৃষ্টি'],71:['🌨️','হালকা তুষারপাত'],73:['🌨️','তুষারপাত'],75:['❄️','ভারী তুষারপাত'],77:['❄️','তুষারকণা'],80:['🌦️','হালকা ঝড়ো বৃষ্টি'],81:['🌧️','ঝড়ো বৃষ্টি'],82:['⛈️','প্রবল বৃষ্টি'],85:['🌨️','তুষার ঝড়'],86:['❄️','ভারী তুষার ঝড়'],95:['⛈️','বজ্রসহ বৃষ্টি'],96:['⛈️','বজ্রসহ শিলাবৃষ্টি'],99:['⛈️','ভারী শিলাবৃষ্টি']};
+const wc=c=>WC[c]||['🌡️','অজানা'];
+
+function load(){try{return JSON.parse(localStorage.getItem(KEY))||{}}catch(e){return{}}}
+function save(s){try{localStorage.setItem(KEY,JSON.stringify(s))}catch(e){}}
+let S=load(); // {loc:{name,lat,lon}, wx:{daily,fetchedAt}}
+
+const todayStr=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+
+function render(){
+  if(S.loc)$('locName').textContent=S.loc.name;
+  const wx=S.wx;
+  if(!S.loc||!wx){return}
+  const t=todayStr();
+  const days=wx.daily.time.map((d,i)=>({d,hi:wx.daily.temperature_2m_max[i],lo:wx.daily.temperature_2m_min[i],c:wx.daily.weathercode[i]})).filter(x=>x.d>=t);
+  if(!days.length){$('list').innerHTML='<div class="msg">তথ্য পুরনো হয়ে গেছে।<br><button class="btn" onclick="fetchWx(true)">আবার লোড করুন</button></div>';return}
+  const min=0,span=50,cl=v=>Math.min(Math.max(v,0),50);
+  $('list').innerHTML=days.map((x,i)=>{
+    const dt=new Date(x.d+'T00:00:00');
+    const name=x.d===t?'আজ':dt.toLocaleDateString('bn-BD',{weekday:'long'});
+    const left=cl(x.lo)/span*100,w=Math.max((cl(x.hi)-cl(x.lo))/span*100,3);
+    return `<div class="day"><div><b>${name}</b><small>${dt.toLocaleDateString('bn-BD',{day:'numeric',month:'short'})}</small></div><div class="ic" title="${wc(x.c)[1]}">${wc(x.c)[0]}</div><div class="lo">${bn(Math.round(x.lo))}°</div><div class="track"><div class="fill" style="left:${left}%;width:${w}%"></div></div><div class="hi">${bn(Math.round(x.hi))}°</div></div>`}).join('');
+  const f=days[0],w=wc(f.c);
+  $('now').innerHTML=`<div class="e">${w[0]}</div><div class="t">${bn(Math.round(f.hi))}° <span style="font-size:24px;opacity:.7">/ ${bn(Math.round(f.lo))}°</span></div><div class="d">${w[1]}</div>`;
+  const next=new Date(wx.fetchedAt+TTL);
+  $('meta').innerHTML=`সর্বশেষ লোড: ${new Date(wx.fetchedAt).toLocaleString('bn-BD',{dateStyle:'medium',timeStyle:'short'})}<br>পরবর্তী স্বয়ংক্রিয় আপডেট: ${next.toLocaleDateString('bn-BD',{dateStyle:'medium'})}`;
+}
+
+async function fetchWx(manual){
+  if(!S.loc)return;
+  $('refBtn').classList.add('spin');
+  try{
+    const u=`https://api.open-meteo.com/v1/forecast?latitude=${S.loc.lat}&longitude=${S.loc.lon}&daily=temperature_2m_max,temperature_2m_min,weathercode&timezone=auto&forecast_days=7`;
+    const r=await fetch(u);if(!r.ok)throw 0;
+    const j=await r.json();
+    S.wx={daily:j.daily,fetchedAt:Date.now()};save(S);render();
+  }catch(e){
+    if(!S.wx)$('list').innerHTML='<div class="msg">তথ্য আনা যায়নি। ইন্টারনেট সংযোগ দেখে আবার চেষ্টা করুন।<br><button class="btn" onclick="fetchWx(true)">আবার চেষ্টা</button></div>';
+    else alert('আপডেট করা যায়নি। ইন্টারনেট সংযোগ দেখুন।');
+  }
+  $('refBtn').classList.remove('spin');
+}
+
+function setLoc(loc){S.loc=loc;S.wx=null;save(S);$('now').innerHTML='';$('meta').textContent='';$('list').innerHTML='<div class="msg">লোড হচ্ছে…</div>';$('locName').textContent=loc.name;$('dlg').close();fetchWx();}
+
+// search
+let tm;
+$('q').addEventListener('input',e=>{
+  clearTimeout(tm);const v=e.target.value.trim();
+  if(v.length<2){$('res').innerHTML='';return}
+  tm=setTimeout(async()=>{
+    try{
+      const r=await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(v)}&count=8&language=bn`);
+      const j=await r.json();
+      const rs=j.results||[];
+      $('res').innerHTML=rs.length?'':'<li>কিছু পাওয়া যায়নি</li>';
+      rs.forEach(p=>{
+        const li=document.createElement('li');
+        li.innerHTML=`${p.name}<small>${[p.admin1,p.country].filter(Boolean).join('، ')}</small>`;
+        li.onclick=()=>setLoc({name:p.name,lat:p.latitude,lon:p.longitude});
+        $('res').appendChild(li);
+      });
+    }catch(e){$('res').innerHTML='<li>সার্চ করা যায়নি</li>'}
+  },350);
+});
+
+$('gpsBtn').onclick=()=>{
+  if(!navigator.geolocation){alert('লোকেশন সাপোর্ট নেই');return}
+  $('gpsBtn').textContent='🎯 খোঁজা হচ্ছে…';
+  navigator.geolocation.getCurrentPosition(async pos=>{
+    const lat=pos.coords.latitude,lon=pos.coords.longitude;
+    let name='আমার অবস্থান';
+    try{
+      const r=await fetch(`https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${lat}&longitude=${lon}&localityLanguage=bn`);
+      const j=await r.json();name=j.city||j.locality||j.principalSubdivision||name;
+    }catch(e){}
+    $('gpsBtn').textContent='🎯 আমার বর্তমান লোকেশন';
+    setLoc({name,lat,lon});
+  },()=>{$('gpsBtn').textContent='🎯 আমার বর্তমান লোকেশন';alert('লোকেশনের অনুমতি পাওয়া যায়নি। নাম লিখে সার্চ করুন।')},{timeout:15000,maximumAge:600000});
+};
+
+const open=()=>{$('q').value='';$('res').innerHTML='';$('dlg').showModal()};
+$('locBtn').onclick=open;$('startBtn')&&($('startBtn').onclick=open);
+$('closeBtn').onclick=()=>$('dlg').close();
+$('refBtn').onclick=()=>fetchWx(true);
+
+// init
+if(S.loc){
+  render();
+  if(!S.wx||Date.now()-S.wx.fetchedAt>=TTL)fetchWx();
+}
+</script>
+</body>
+</html>

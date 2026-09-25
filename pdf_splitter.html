@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PDF স্প্লিটার</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
+<style>
+  * { box-sizing: border-box; }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #f4f6f8;
+    margin: 0;
+    padding: 30px 15px;
+    color: #222;
+  }
+  .container {
+    max-width: 560px;
+    margin: 0 auto;
+    background: #fff;
+    border-radius: 12px;
+    padding: 28px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+  }
+  h1 {
+    font-size: 22px;
+    margin-top: 0;
+    margin-bottom: 20px;
+    color: #1a1a1a;
+  }
+  label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 6px;
+    margin-top: 16px;
+    font-size: 14px;
+  }
+  input[type="file"], input[type="number"] {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    font-size: 14px;
+  }
+  button {
+    margin-top: 22px;
+    width: 100%;
+    padding: 12px;
+    background: #2563eb;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  button:disabled {
+    background: #9ca3af;
+    cursor: not-allowed;
+  }
+  #status {
+    margin-top: 14px;
+    font-size: 14px;
+    color: #555;
+    min-height: 20px;
+  }
+  #results {
+    margin-top: 20px;
+  }
+  .file-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 14px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    margin-bottom: 8px;
+    background: #fafafa;
+  }
+  .file-item span {
+    font-size: 14px;
+  }
+  .file-item a {
+    background: #10b981;
+    color: #fff;
+    text-decoration: none;
+    padding: 6px 14px;
+    border-radius: 6px;
+    font-size: 13px;
+    font-weight: 600;
+  }
+  #downloadAll {
+    display: none;
+    margin-top: 14px;
+    background: #7c3aed;
+  }
+  .error {
+    color: #dc2626;
+    font-weight: 600;
+  }
+</style>
+</head>
+<body>
+<div class="container">
+  <h1>📄 PDF ভাঙার টুল</h1>
+
+  <label for="pdfFile">PDF ফাইল আপলোড করুন</label>
+  <input type="file" id="pdfFile" accept="application/pdf">
+
+  <label for="pageCount">প্রতি ফাইলে কত পাতা থাকবে</label>
+  <input type="number" id="pageCount" min="1" placeholder="যেমন: 10">
+
+  <button id="submitBtn">সাবমিট করুন</button>
+
+  <div id="status"></div>
+  <div id="results"></div>
+</div>
+
+<script>
+const { PDFDocument } = PDFLib;
+
+const fileInput = document.getElementById('pdfFile');
+const pageCountInput = document.getElementById('pageCount');
+const submitBtn = document.getElementById('submitBtn');
+const statusEl = document.getElementById('status');
+const resultsEl = document.getElementById('results');
+
+let generatedFiles = [];
+
+submitBtn.addEventListener('click', async () => {
+  resultsEl.innerHTML = '';
+  statusEl.textContent = '';
+  statusEl.className = '';
+  generatedFiles = [];
+
+  const file = fileInput.files[0];
+  const pagesPerFile = parseInt(pageCountInput.value, 10);
+
+  if (!file) {
+    statusEl.textContent = 'দয়া করে একটি PDF ফাইল আপলোড করুন।';
+    statusEl.className = 'error';
+    return;
+  }
+  if (!pagesPerFile || pagesPerFile < 1) {
+    statusEl.textContent = 'দয়া করে সঠিক পাতার সংখ্যা লিখুন।';
+    statusEl.className = 'error';
+    return;
+  }
+
+  submitBtn.disabled = true;
+  statusEl.textContent = 'প্রসেসিং চলছে, একটু অপেক্ষা করুন...';
+
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const srcDoc = await PDFDocument.load(arrayBuffer);
+    const totalPages = srcDoc.getPageCount();
+    const totalParts = Math.ceil(totalPages / pagesPerFile);
+    const baseName = file.name.replace(/\.pdf$/i, '');
+
+    for (let part = 0; part < totalParts; part++) {
+      const startPage = part * pagesPerFile;
+      const endPage = Math.min(startPage + pagesPerFile, totalPages);
+
+      const newDoc = await PDFDocument.create();
+      const pageIndices = [];
+      for (let i = startPage; i < endPage; i++) pageIndices.push(i);
+
+      const copiedPages = await newDoc.copyPages(srcDoc, pageIndices);
+      copiedPages.forEach(p => newDoc.addPage(p));
+
+      const pdfBytes = await newDoc.save();
+      const blob = new Blob([pdfBytes], { type: 'application/pdf' });
+      const url = URL.createObjectURL(blob);
+      const fileName = `${baseName}_part${part + 1}.pdf`;
+
+      generatedFiles.push({ name: fileName, url });
+
+      const item = document.createElement('div');
+      item.className = 'file-item';
+      item.innerHTML = `<span>📄 ${fileName} (পাতা ${startPage + 1}-${endPage})</span>
+        <a href="${url}" download="${fileName}">ডাউনলোড</a>`;
+      resultsEl.appendChild(item);
+    }
+
+    statusEl.textContent = `সফলভাবে ${totalParts}টি ফাইলে ভাগ করা হয়েছে (মোট ${totalPages} পাতা)।`;
+  } catch (err) {
+    console.error(err);
+    statusEl.textContent = 'একটি সমস্যা হয়েছে। ফাইলটি সঠিক PDF কিনা যাচাই করুন। (' + err.message + ')';
+    statusEl.className = 'error';
+  } finally {
+    submitBtn.disabled = false;
+  }
+});
+</script>
+</body>
+</html>

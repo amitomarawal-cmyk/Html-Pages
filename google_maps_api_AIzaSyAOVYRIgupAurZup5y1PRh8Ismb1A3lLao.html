@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Maps</title>
+<style>
+:root{--bg:#fff;--fg:#202124;--sub:#5f6368;--p:#1a73e8;--hi:#e8f0fe;--sh:0 2px 8px rgba(0,0,0,.3)}
+@media(prefers-color-scheme:dark){:root{--bg:#303134;--fg:#e8eaed;--sub:#9aa0a6;--p:#8ab4f8;--hi:#3c4a63}}
+html,body{margin:0;height:100%;overflow:hidden;background:#e5e3df;font-family:Roboto,"Noto Sans Bengali",system-ui,sans-serif}
+#map{position:absolute;inset:0}
+#top{pointer-events:none;position:absolute;top:calc(12px + env(safe-area-inset-top,0px));left:12px;right:12px;z-index:5}
+#bar,#sug,#chips .c{pointer-events:auto}
+#bar{display:flex;align-items:center;gap:4px;height:52px;padding:0 6px 0 16px;background:var(--bg);color:var(--fg);border-radius:26px;box-shadow:var(--sh)}
+#q{flex:1;min-width:0;border:0;outline:0;background:transparent;color:inherit;font-size:16px;padding:0 6px;height:100%}
+.ib{width:40px;height:40px;border:0;border-radius:50%;background:transparent;color:var(--sub);display:grid;place-items:center;cursor:pointer;flex:none}
+.ib:active{background:var(--hi)}
+svg{width:24px;height:24px;fill:currentColor}
+#sug{display:none;margin-top:8px;max-height:50vh;overflow-y:auto;background:var(--bg);border-radius:18px;box-shadow:var(--sh);touch-action:pan-y}
+.s{display:flex;gap:12px;align-items:center;padding:12px 16px;color:var(--fg);cursor:pointer}
+.s:active{background:var(--hi)}
+.s svg{color:var(--sub);flex:none}
+.s b{display:block;font-weight:500;font-size:15px}
+.s small{color:var(--sub);font-size:13px}
+#chips{display:flex;gap:8px;margin-top:10px;overflow-x:auto}
+.c{border:0;border-radius:16px;padding:7px 14px;font-size:14px;background:var(--bg);color:var(--fg);box-shadow:var(--sh);cursor:pointer;white-space:nowrap}
+.c.on{background:var(--p);color:#fff}
+#fabs{position:absolute;right:12px;bottom:calc(28px + env(safe-area-inset-bottom,0px));z-index:5;display:flex;flex-direction:column;gap:12px;align-items:center}
+.f{width:48px;height:48px;border:0;border-radius:50%;background:var(--bg);color:var(--sub);box-shadow:var(--sh);display:grid;place-items:center;cursor:pointer}
+.f.on{background:var(--p);color:#fff}
+.f.big{width:56px;height:56px;border-radius:18px;background:var(--p);color:#fff}
+#cmp svg{transition:transform .1s}
+#msg{position:absolute;left:16px;right:16px;bottom:calc(20px + env(safe-area-inset-bottom,0px));z-index:30;background:#323232;color:#fff;padding:12px 16px;border-radius:8px;display:none;font-size:14px}
+#setup{position:absolute;inset:0;z-index:20;display:none;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.55)}
+#setup .box{width:100%;max-width:420px;background:var(--bg);color:var(--fg);border-radius:24px;padding:22px;box-shadow:var(--sh)}
+#setup h2{margin:0 0 8px;font-size:20px;font-weight:500}
+#setup p{margin:0 0 14px;font-size:14px;line-height:1.5;color:var(--sub)}
+#setup #err{color:#d93025;margin:12px 0 0}
+#key{width:100%;box-sizing:border-box;height:48px;border:1px solid var(--sub);border-radius:12px;padding:0 14px;font-size:15px;background:transparent;color:inherit;outline:0}
+#key:focus{border-color:var(--p)}
+#setup .row{display:flex;gap:8px;margin-top:14px;justify-content:flex-end}
+#setup .c{box-shadow:none;border:1px solid var(--sub)}
+#setup .c.on{border-color:var(--p)}
+.dot{width:18px;height:18px;border-radius:50%;background:#4285f4;border:3px solid #fff;box-shadow:0 0 6px rgba(0,0,0,.5)}
+#spd{position:absolute;left:12px;bottom:calc(28px + env(safe-area-inset-bottom,0px));z-index:5;width:84px;height:84px;border-radius:50%;background:var(--bg);color:var(--fg);box-shadow:var(--sh);display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:Roboto,system-ui,sans-serif}
+#spd b{font-size:26px;line-height:1;font-weight:500}
+#spd small{font-size:11px;color:var(--sub)}
+</style>
+</head>
+<body>
+<div id="map"></div>
+
+<div id="top">
+  <div id="chips">
+    <button class="c on" data-t="roadmap">ম্যাপ</button>
+    <button class="c" data-t="satellite">স্যাটেলাইট</button>
+    <button class="c" data-t="hybrid">হাইব্রিড</button>
+    <button class="c" data-t="terrain">টেরেইন</button>
+  </div>
+</div>
+
+<div id="setup">
+  <div class="box">
+    <h2>Google Maps key দিন</h2>
+    <p>console.cloud.google.com এ গিয়ে: Billing চালু করুন, তারপর Maps JavaScript API ও Places API (New) Enable করুন, Credentials থেকে API key কপি করুন।</p>
+    <input id="key" placeholder="AIza..." autocomplete="off" autocapitalize="off" spellcheck="false">
+    <div class="row">
+      <button class="c" id="paste">পেস্ট</button>
+      <button class="c" id="reset">মুছুন</button>
+      <button class="c on" id="go">চালু করুন</button>
+    </div>
+    <p id="err"></p>
+  </div>
+</div>
+
+<div id="fabs">
+  <button class="f" id="keyb" aria-label="API key"><svg viewBox="0 0 24 24"><path d="M12.7 12A5.5 5.5 0 1 0 12 13.500L13 15h2v2h2v2h3v-3l-7.300-4zM7.500 9.500a1.500 1.500 0 1 1 0-3 1.500 1.500 0 0 1 0 3z"/></svg></button>
+  <button class="f" id="cmp" aria-label="উত্তর দিকে ঘুরান"><svg viewBox="0 0 24 24"><path d="M12 2 8 12h8zM12 22l4-10H8z" opacity=".5"/><path d="M12 2 8 12h8z"/></svg></button>
+  <button class="f" id="drone" aria-label="ড্রোন ভিউ"><svg viewBox="0 0 24 24"><path d="M5 3a3 3 0 0 0-1 5.8v2.2h2V8.8A3 3 0 0 0 5 3zm14 0a3 3 0 0 0-1 5.8V11h2V8.8A3 3 0 0 0 19 3zM9 11v2H4v2h5.5l-1 3H10l2-2 2 2h1.5l-1-3H20v-2h-5v-2z"/></svg></button>
+  <button class="f" id="goc" aria-label="কোঅর্ডিনেটে যান"><svg viewBox="0 0 24 24"><path d="M12 2 1 21h22zm0 4.3L18.5 19h-13z"/></svg></button>
+  <button class="f big" id="loc" aria-label="আমার অবস্থান"><svg viewBox="0 0 24 24"><path d="M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm8.9 3A9 9 0 0 0 13 3.1V1h-2v2.1A9 9 0 0 0 3.1 11H1v2h2.1A9 9 0 0 0 11 20.9V23h2v-2.1a9 9 0 0 0 7.9-7.9H23v-2zM12 19a7 7 0 1 1 0-14 7 7 0 0 1 0 14z"/></svg></button>
+</div>
+<div id="spd"><b id="spdv">0</b><small>km/h</small></div>
+<div id="msg"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+let map, pins = [], meMarker, meCircle, watchId, droneOn = false, raf;
+
+function toast(t){const m=$('msg');m.textContent=t;m.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>m.style.display='none',3500)}
+
+window.initMap = async () => {
+  const {Map} = await google.maps.importLibrary('maps');
+  await google.maps.importLibrary('marker');
+
+  map = new Map($('map'), {
+    center:{lat:23.8103,lng:90.4125}, zoom:12,
+    mapId:'DEMO_MAP_ID',            // vector map: rotate + tilt এর জন্য দরকার
+    renderingType:'VECTOR',
+    gestureHandling:'greedy',        // দুই আঙুলে জুম/ঘোরানো/টিল্ট
+    headingInteractionEnabled:true,
+    tiltInteractionEnabled:true,
+    disableDefaultUI:true,
+    isFractionalZoomEnabled:true
+  });
+
+  map.addListener('heading_changed', () => {
+    $('cmp').firstElementChild.style.transform = `rotate(${-(map.getHeading()||0)}deg)`;
+  });
+  map.addListener('dragstart', stopSpin);
+  $('map').addEventListener('touchstart', stopSpin, {passive:true});
+
+  document.querySelectorAll('#chips .c').forEach(b => b.onclick = () => {
+    document.querySelectorAll('#chips .c').forEach(x => x.classList.remove('on'));
+    b.classList.add('on'); map.setMapTypeId(b.dataset.t);
+  });
+  $('cmp').onclick = () => { stopSpin(); map.moveCamera({heading:0, tilt:0}); };
+  $('loc').onclick = locate;
+  $('drone').onclick = toggleDrone;
+  $('goc').onclick = goToCoord;
+  map.addListener('click', e => { if(e.placeId) e.stop(); addPin(e.latLng); });
+  loadPins().forEach(p => addPin(p, true));
+  locate();
+};
+
+function goToCoord(){
+  const v = (prompt('কোঅর্ডিনেট লিখুন (lat, lng)') || '').trim();
+  if(!v) return;
+  const m = v.match(/^(-?\d+(\.\d+)?)\s*,\s*(-?\d+(\.\d+)?)$/);
+  if(!m) return toast('সঠিক ফরম্যাট নয় — যেমন: 23.8103, 90.4125');
+  const lat = parseFloat(m[1]), lng = parseFloat(m[3]);
+  if(lat < -90 || lat > 90 || lng < -180 || lng > 180) return toast('স্থানাঙ্ক সীমার বাইরে');
+  map.panTo({lat, lng}); map.setZoom(17);
+  addPin({lat, lng});
+}
+
+/* ---------- একাধিক প্লেস মার্কার ---------- */
+function loadPins(){ try{ return JSON.parse(localStorage.getItem('gmpins')||'[]'); }catch(e){ return []; } }
+function savePins(){ try{ localStorage.setItem('gmpins', JSON.stringify(pins.map(m => ({lat:m.position.lat, lng:m.position.lng})))); }catch(e){} }
+function addPin(pos, silent){
+  const lat = typeof pos.lat === 'function' ? pos.lat() : pos.lat;
+  const lng = typeof pos.lng === 'function' ? pos.lng() : pos.lng;
+  const m = new google.maps.marker.AdvancedMarkerElement({map, position:{lat,lng}, title:`মার্কার ${pins.length+1}`});
+  m.addListener('gmp-click', () => { m.map = null; pins = pins.filter(x => x !== m); savePins(); toast('মার্কার সরানো হয়েছে'); });
+  pins.push(m);
+  savePins();
+  if(!silent) toast(`মার্কার যোগ হয়েছে (মোট ${pins.length}) — মুছতে মার্কারে ট্যাপ করুন`);
+}
+
+/* ---------- আমার লোকেশন ---------- */
+function locate(){
+  if(!navigator.geolocation) return toast('এই ডিভাইসে লোকেশন সাপোর্ট নেই');
+  const el = document.createElement('div'); el.className='dot';
+  const upd = (p, go) => {
+    const pos = {lat:p.coords.latitude, lng:p.coords.longitude};
+    if(!meMarker){
+      meMarker = new google.maps.marker.AdvancedMarkerElement({map, position:pos, content:el, zIndex:99});
+      meCircle = new google.maps.Circle({map, center:pos, radius:p.coords.accuracy, strokeWeight:0, fillColor:'#4285f4', fillOpacity:.15});
+    } else { meMarker.position = pos; meCircle.setCenter(pos); meCircle.setRadius(p.coords.accuracy); }
+    if(go){ map.panTo(pos); if(map.getZoom()<16) map.setZoom(17); }
+    const kmh = (typeof p.coords.speed === 'number' && p.coords.speed !== null) ? p.coords.speed * 3.6 : 0;
+    $('spdv').textContent = Math.max(0, Math.round(kmh));
+  };
+  if(watchId==null){
+    watchId = navigator.geolocation.watchPosition(p => upd(p, !meMarker), e => { toast('লোকেশন পাওয়া যায়নি — পারমিশন দিন'); navigator.geolocation.clearWatch(watchId); watchId = null; }, {enableHighAccuracy:true});
+  } else if(meMarker){ stopSpin(); map.panTo(meMarker.position); map.setZoom(Math.max(map.getZoom(),17)); }
+}
+
+/* ---------- ড্রোন ভিউ ---------- */
+function toggleDrone(){
+  droneOn = !droneOn;
+  $('drone').classList.toggle('on', droneOn);
+  if(droneOn){
+    map.setMapTypeId('satellite');
+    document.querySelectorAll('#chips .c').forEach(x => x.classList.toggle('on', x.dataset.t==='satellite'));
+    map.moveCamera({zoom:Math.max(map.getZoom(),18), tilt:67.5});
+    spin();
+  } else { stopSpin(); map.moveCamera({tilt:0, heading:0}); }
+}
+function spin(){ if(!droneOn) return; map.moveCamera({heading:(map.getHeading()||0)+.15}); raf = requestAnimationFrame(spin); }
+function stopSpin(){ if(!droneOn) return; droneOn=false; cancelAnimationFrame(raf); $('drone').classList.remove('on'); }
+
+/* ---------- লোড ---------- */
+let loaded = false, memKey = '';
+const getKey = () => { try { return localStorage.getItem('gmkey') || memKey; } catch(e){ return memKey; } };
+const setKey = k => { memKey = k; try { localStorage.setItem('gmkey', k); } catch(e){} };
+function showSetup(err){ $('setup').style.display='flex'; $('key').value = getKey(); $('err').textContent = err || ''; }
+function load(k){
+  loaded = true;
+  const sc = document.createElement('script');
+  sc.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(k)}&v=weekly&loading=async&callback=initMap`;
+  sc.async = true;
+  sc.onerror = () => { loaded = false; showSetup('ইন্টারনেট চেক করুন'); };
+  document.head.appendChild(sc);
+}
+window.gm_authFailure = () => showSetup('Key কাজ করছে না। API চালু ও Billing চেক করুন।');
+
+$('go').onclick = () => {
+  const k = $('key').value.trim();
+  if(!k) return showSetup('Key লিখুন');
+  setKey(k); $('setup').style.display = 'none';
+  if(loaded) { try { if(localStorage.getItem('gmkey') === k) return location.reload(); } catch(e){} toast('নতুন key নিতে অ্যাপ আবার খুলুন'); }
+  else load(k);
+};
+$('paste').onclick = async () => { try { $('key').value = (await navigator.clipboard.readText()).trim(); } catch(e){ toast('পেস্ট হয়নি, বক্সে চেপে ধরে পেস্ট করুন'); } };
+$('keyb').onclick = () => showSetup();
+$('reset').onclick = () => { try { localStorage.removeItem('gmkey'); } catch(e){} memKey=''; $('key').value=''; toast('Key মুছে গেছে'); };
+
+const k0 = getKey();
+k0 ? load(k0) : showSetup();
+</script>
+</body>
+</html>

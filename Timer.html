@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#23286b">
+<title>স্টপওয়াচ ও টাইমার</title>
+<style>
+:root{--bg:#f1f2f9;--card:#fff;--ink:#1c1e3a;--mute:#666a8f;--line:#dcdeef;--brand:#23286b;--acc:#ffb020;--ok:#1f9d6b;--bad:#d64545;--chip:#e8eafb}
+@media(prefers-color-scheme:dark){:root{--bg:#0f1020;--card:#1a1c36;--ink:#eceeff;--mute:#9a9fca;--line:#2b2e52;--brand:#23286b;--chip:#26294d}}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+body{margin:0;font-family:"Noto Sans Bengali","Hind Siliguri",system-ui,sans-serif;background:var(--bg);color:var(--ink);min-height:100vh;display:flex;flex-direction:column}
+header{background:var(--brand);color:#fff;padding:calc(env(safe-area-inset-top,0px) + 12px) 16px 12px;display:flex;justify-content:space-between;align-items:center}
+header h1{margin:0;font-size:19px;font-weight:600}
+.ib{border:0;background:rgba(255,255,255,.15);color:#fff;width:40px;height:40px;border-radius:50%;font-size:19px}
+.panes{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:14px}
+section{background:var(--card);border-radius:22px;padding:16px;min-width:0;align-self:start}
+h2{margin:0 0 12px;font-size:17px}
+.disp{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;margin:8px 0 14px}
+.u{background:var(--chip);border-radius:14px;min-width:58px;padding:8px 6px;text-align:center}
+.u b{display:block;font-size:26px;font-weight:600;font-variant-numeric:tabular-nums}
+.u small{color:var(--mute);font-size:11.5px}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+.b{flex:1;min-width:90px;border:0;border-radius:22px;padding:12px 14px;font:inherit;font-size:15px;background:var(--brand);color:#fff}
+.b.s{background:var(--chip);color:var(--ink)}.b.a{background:var(--acc);color:#2a1d00}.b.d{background:var(--bad);color:#fff}
+.tm{border:1px solid var(--line);border-radius:18px;padding:12px;margin-top:12px}
+.tm.done{border-color:var(--ok);background:color-mix(in srgb,var(--ok) 12%,transparent)}
+.tm .h{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.tm .h b{font-size:15px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tm .u{min-width:48px}.tm .u b{font-size:20px}
+.sub{color:var(--mute);font-size:12.5px;text-align:center;margin:0 0 8px}
+.tmm{margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
+.tmm p{margin:0 0 8px;font-size:13.5px;color:var(--mute)}
+input{font:inherit;font-size:16px;width:100%;padding:11px 12px;border-radius:12px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+.row{display:flex;gap:8px;align-items:center}
+dialog{border:0;border-radius:24px;padding:20px;width:min(92vw,420px);background:var(--card);color:var(--ink)}
+dialog::backdrop{background:rgba(0,0,0,.5)}
+.g{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin:12px 0}
+.g label{font-size:12px;color:var(--mute)}
+.empty{color:var(--mute);text-align:center;padding:18px 0;font-size:14px}
+nav{display:none;position:sticky;bottom:0;background:var(--card);border-top:1px solid var(--line);padding:6px 10px calc(env(safe-area-inset-bottom,0px) + 6px)}
+nav button{flex:1;border:0;background:none;color:var(--mute);font:inherit;font-size:13px;padding:8px;border-radius:16px}
+nav button.on{background:var(--chip);color:var(--ink);font-weight:600}
+@media(max-width:719px){
+ .panes{grid-template-columns:1fr}
+ nav{display:flex}
+ body[data-tab=sw] #pTm,body[data-tab=tm] #pSw{display:none}
+}
+</style>
+</head>
+<body data-tab="sw">
+<header><h1>⏱ স্টপওয়াচ ও টাইমার</h1><button class="ib" id="menuBtn" aria-label="ডেটা">⚙</button></header>
+
+<div class="panes">
+ <section id="pSw">
+  <h2>স্টপওয়াচ</h2>
+  <button class="b" id="addSw" style="width:100%">＋ নতুন স্টপওয়াচ</button>
+  <div id="swL"></div>
+ </section>
+ <section id="pTm">
+  <h2>টাইমার</h2>
+  <button class="b" id="addBtn" style="width:100%">＋ নতুন টাইমার</button>
+  <div id="tmL"></div>
+ </section>
+</div>
+
+<nav><button data-t="sw" class="on">স্টপওয়াচ</button><button data-t="tm">টাইমার</button></nav>
+
+<dialog id="addD">
+ <h2>নতুন টাইমার</h2>
+ <input id="tName" placeholder="নাম (ঐচ্ছিক)">
+ <div class="g">
+  <div><label>বছর</label><input type="number" min="0" inputmode="numeric" id="i_y" placeholder="০"></div>
+  <div><label>মাস</label><input type="number" min="0" inputmode="numeric" id="i_mo" placeholder="০"></div>
+  <div><label>দিন</label><input type="number" min="0" inputmode="numeric" id="i_d" placeholder="০"></div>
+  <div><label>ঘণ্টা</label><input type="number" min="0" inputmode="numeric" id="i_h" placeholder="০"></div>
+  <div><label>মিনিট</label><input type="number" min="0" inputmode="numeric" id="i_mi" placeholder="০"></div>
+  <div><label>সেকেন্ড</label><input type="number" min="0" inputmode="numeric" id="i_s" placeholder="০"></div>
+ </div>
+ <div class="btns"><button class="b s" id="addC">বাতিল</button><button class="b" id="addOk">চালু করুন</button></div>
+</dialog>
+
+<dialog id="swAddD">
+ <h2>নতুন স্টপওয়াচ</h2>
+ <input id="swName" placeholder="নাম (ঐচ্ছিক)">
+ <p class="sub" style="margin:12px 0 6px;text-align:left">🕰 অতীতের সময় থেকে শুরু (ঐচ্ছিক)</p>
+ <input type="datetime-local" id="swPast">
+ <div class="btns" style="margin-top:14px"><button class="b s" id="swAddC">বাতিল</button><button class="b" id="swAddOk">যুক্ত করুন</button></div>
+</dialog>
+
+<dialog id="pastD">
+ <h2>টাইম মেশিন</h2>
+ <p class="sub" style="text-align:left">অতীতের যে সময় বসাবেন, স্টপওয়াচ সেখান থেকে চলবে।</p>
+ <input type="datetime-local" id="pastIn">
+ <div class="btns" style="margin-top:14px"><button class="b s" id="pastC">বাতিল</button><button class="b a" id="pastOk">বসান</button></div>
+</dialog>
+
+<dialog id="menuD">
+ <h2>ডেটা</h2>
+ <div class="btns" style="flex-direction:column">
+  <button class="b" id="exp">ব্যাকআপ নিন</button>
+  <button class="b s" id="impB">ব্যাকআপ থেকে ফিরিয়ে আনুন</button>
+  <button class="b d" id="rst">সব রিসেট করুন</button>
+  <button class="b s" id="menuC">বন্ধ</button>
+ </div>
+ <input type="file" id="impF" accept=".json,application/json" hidden>
+</dialog>
+
+<script>
+const KEY='tm_app_v1',$=id=>document.getElementById(id);
+const bn=s=>String(s).replace(/\d/g,x=>'০১২৩৪৫৬৭৮৯'[x]),p2=n=>bn(String(n).padStart(2,'0'));
+const def=()=>({sws:[],timers:[]});
+const esc=x=>String(x||'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function norm(x){x=x||def();if(!x.sws){x.sws=[];if(x.sw&&x.sw.st!=='idle')x.sws.push({id:1,name:'',...x.sw});delete x.sw}if(!Array.isArray(x.timers))x.timers=[];return x}
+let S;try{S=norm(JSON.parse(localStorage.getItem(KEY)))}catch(e){S=def()}
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}};
+
+// calendar-aware difference a<=b (ms)
+function cd(a,b){
+ a=Math.floor(a/1000)*1000;b=Math.floor(b/1000)*1000;if(b<a)b=a;
+ const A=new Date(a),B=new Date(b);
+ let y=B.getFullYear()-A.getFullYear(),mo=B.getMonth()-A.getMonth(),d=B.getDate()-A.getDate(),h=B.getHours()-A.getHours(),mi=B.getMinutes()-A.getMinutes(),s=B.getSeconds()-A.getSeconds();
+ if(s<0){s+=60;mi--}if(mi<0){mi+=60;h--}if(h<0){h+=24;d--}
+ if(d<0){d+=new Date(B.getFullYear(),B.getMonth(),0).getDate();mo--}
+ if(mo<0){mo+=12;y--}
+ return{y,mo,d,h,mi,s}}
+function add(base,o){
+ const D=new Date(base),day=D.getDate();
+ D.setDate(1);D.setFullYear(D.getFullYear()+o.y);D.setMonth(D.getMonth()+o.mo);
+ D.setDate(Math.min(day,new Date(D.getFullYear(),D.getMonth()+1,0).getDate()));
+ D.setDate(D.getDate()+o.d);
+ return D.getTime()+(o.h*3600+o.mi*60+o.s)*1000}
+function fmt(o){
+ const c=[];
+ if(o.y>0)c.push([bn(o.y),'বছর']);
+ if(o.y>0||o.mo>0)c.push([bn(o.mo),'মাস']);
+ c.push([bn(o.d),'দিন'],[p2(o.h),'ঘণ্টা'],[p2(o.mi),'মিনিট'],[p2(o.s),'সেকেন্ড']);
+ return c.map(([n,l])=>`<div class="u"><b>${n}</b><small>${l}</small></div>`).join('')}
+const Z={y:0,mo:0,d:0,h:0,mi:0,s:0};
+const dt=t=>new Date(t).toLocaleString('bn-BD',{dateStyle:'medium',timeStyle:'short'});
+
+// stopwatches
+function swInfo(w){const n=Date.now();if(w.st==='run')return cd(w.start,n);if(w.st==='pause')return cd(w.start,w.pAt);return Z}
+function renderS(){
+ $('swL').innerHTML=S.sws.length?S.sws.map(w=>{
+  const b=w.st==='idle'?`<button class="b" data-i="${w.id}" data-a="go">শুরু</button>`:
+   (w.st==='run'?`<button class="b a" data-i="${w.id}" data-a="pause">বিরতি</button>`:`<button class="b" data-i="${w.id}" data-a="resume">চালু</button>`)+`<button class="b s" data-i="${w.id}" data-a="reset">রিসেট</button>`;
+  const sub=w.st==='idle'?'বন্ধ আছে':'শুরু: '+dt(w.start)+(w.st==='pause'?' (বিরতিতে)':'');
+  return `<div class="tm"><div class="h"><b>${esc(w.name)||'স্টপওয়াচ'}</b><span style="display:flex;gap:6px">
+   <button class="ib" style="background:var(--chip);color:var(--ink);width:34px;height:34px;font-size:15px" data-i="${w.id}" data-a="past" aria-label="টাইম মেশিন">🕰</button>
+   <button class="ib" style="background:var(--chip);color:var(--ink);width:34px;height:34px;font-size:15px" data-i="${w.id}" data-a="del" aria-label="মুছুন">🗑</button></span></div>
+   <div class="disp" id="sd${w.id}">${fmt(swInfo(w))}</div><p class="sub">${sub}</p><div class="btns">${b}</div></div>`}).join(''):'<div class="empty">কোনো স্টপওয়াচ নেই</div>'}
+let pastId=0;
+$('swL').onclick=e=>{const a=e.target.dataset.a,i=+e.target.dataset.i;if(!a)return;
+ const w=S.sws.find(x=>x.id===i),n=Date.now();
+ if(a==='past'){pastId=i;$('pastIn').value='';$('pastD').showModal();return}
+ if(a==='del'){if(!confirm('স্টপওয়াচটি মুছবেন?'))return;S.sws=S.sws.filter(x=>x.id!==i)}
+ if(a==='go'){w.st='run';w.start=n;w.pAt=0}
+ if(a==='pause'){w.st='pause';w.pAt=n}
+ if(a==='resume'){w.start+=n-w.pAt;w.st='run'}
+ if(a==='reset'){w.st='idle';w.start=0;w.pAt=0}
+ save();renderS();tick()};
+const okPast=v=>{const t=new Date(v).getTime();if(!v||isNaN(t)||t>Date.now()){alert('অতীতের একটি সঠিক তারিখ ও সময় দিন।');return 0}return t};
+$('pastC').onclick=()=>$('pastD').close();
+$('pastOk').onclick=()=>{const t=okPast($('pastIn').value);if(!t)return;const w=S.sws.find(x=>x.id===pastId);if(!w)return;
+ w.st='run';w.start=t;w.pAt=0;save();$('pastD').close();renderS();tick()};
+$('addSw').onclick=()=>{$('swName').value='';$('swPast').value='';$('swAddD').showModal()};
+$('swAddC').onclick=()=>$('swAddD').close();
+$('swAddOk').onclick=()=>{
+ const w={id:Date.now(),name:$('swName').value.trim(),st:'idle',start:0,pAt:0};
+ if($('swPast').value){const t=okPast($('swPast').value);if(!t)return;w.st='run';w.start=t}
+ S.sws.push(w);save();$('swAddD').close();renderS();tick()};
+
+// timers
+function beep(){
+ try{navigator.vibrate&&navigator.vibrate([300,150,300,150,300])}catch(e){}
+ try{const C=new(window.AudioContext||window.webkitAudioContext)();
+  [0,.4,.8].forEach(t=>{const o=C.createOscillator(),g=C.createGain();o.frequency.value=880;o.connect(g);g.connect(C.destination);
+   g.gain.setValueAtTime(.25,C.currentTime+t);g.gain.setValueAtTime(0,C.currentTime+t+.25);o.start(C.currentTime+t);o.stop(C.currentTime+t+.3)})}catch(e){}}
+function tmInfo(t){const n=Date.now();
+ if(t.st==='run')return cd(n,t.end);if(t.st==='pause')return cd(t.pAt,t.pAt+t.rem);return Z}
+function renderT(){
+ $('tmL').innerHTML=S.timers.length?S.timers.map(t=>`<div class="tm ${t.st==='done'?'done':''}">
+  <div class="h"><b>${esc(t.name)||'টাইমার'}</b><button class="ib" style="background:var(--chip);color:var(--ink);width:34px;height:34px;font-size:15px" data-i="${t.id}" data-a="del">🗑</button></div>
+  <div class="disp" id="td${t.id}">${fmt(tmInfo(t))}</div>
+  <p class="sub">${t.st==='done'?'✅ সময় শেষ':t.st==='run'?'শেষ হবে: '+dt(t.end):'বিরতিতে'}</p>
+  <div class="btns">${t.st==='run'?`<button class="b a" data-i="${t.id}" data-a="pause">বিরতি</button>`:t.st==='pause'?`<button class="b" data-i="${t.id}" data-a="resume">চালু</button>`:`<button class="b" data-i="${t.id}" data-a="again">আবার</button>`}</div></div>`).join(''):'<div class="empty">কোনো টাইমার নেই</div>'}
+$('tmL').onclick=e=>{const a=e.target.dataset.a,i=+e.target.dataset.i;if(!a)return;
+ const t=S.timers.find(x=>x.id===i),n=Date.now();
+ if(a==='del'){if(!confirm('টাইমারটি মুছবেন?'))return;S.timers=S.timers.filter(x=>x.id!==i)}
+ if(a==='pause'){t.rem=t.end-n;t.pAt=n;t.st='pause'}
+ if(a==='resume'){t.end=n+t.rem;t.st='run'}
+ if(a==='again'){t.end=add(n,t.o);t.st='run'}
+ save();renderT();tick()};
+$('addBtn').onclick=()=>{['i_y','i_mo','i_d','i_h','i_mi','i_s','tName'].forEach(x=>$(x).value='');$('addD').showModal()};
+$('addC').onclick=()=>$('addD').close();
+$('addOk').onclick=()=>{
+ const g=k=>Math.max(0,Math.floor(+$(k).value||0)),o={y:g('i_y'),mo:g('i_mo'),d:g('i_d'),h:g('i_h'),mi:g('i_mi'),s:g('i_s')};
+ if(!Object.values(o).some(v=>v>0)){alert('সময় দিন।');return}
+ S.timers.push({id:Date.now(),name:$('tName').value.trim(),o,end:add(Date.now(),o),st:'run'});
+ save();$('addD').close();renderT();tick()};
+
+function tick(){
+ S.sws.forEach(w=>{const el=$('sd'+w.id);if(el)el.innerHTML=fmt(swInfo(w))});
+ let ch=false;const n=Date.now();
+ S.timers.forEach(t=>{
+  if(t.st==='run'&&n>=t.end){t.st='done';ch=true;beep()}
+  const el=$('td'+t.id);if(el&&!ch)el.innerHTML=fmt(tmInfo(t))});
+ if(ch){save();renderT()}}
+
+// data
+$('menuBtn').onclick=()=>$('menuD').showModal();$('menuC').onclick=()=>$('menuD').close();
+$('exp').onclick=()=>{
+ const b=new Blob([JSON.stringify({v:1,at:Date.now(),data:S})],{type:'application/json'}),a=document.createElement('a');
+ a.href=URL.createObjectURL(b);a.download='timer-backup-'+new Date().toISOString().slice(0,10)+'.json';document.body.appendChild(a);a.click();a.remove()};
+$('impB').onclick=()=>$('impF').click();
+$('impF').onchange=e=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();
+ r.onload=()=>{try{const j=JSON.parse(r.result).data;if(!j||(!j.sw&&!j.sws)||!Array.isArray(j.timers))throw 0;
+  if(!confirm('বর্তমান ডেটা বদলে ব্যাকআপ বসানো হবে। ঠিক আছে?'))return;
+  S=norm(j);save();renderS();renderT();tick();$('menuD').close()}catch(x){alert('ব্যাকআপ ফাইলটি সঠিক নয়।')}};
+ r.readAsText(f);e.target.value=''};
+$('rst').onclick=()=>{if(!confirm('স্টপওয়াচ ও সব টাইমার মুছে যাবে। নিশ্চিত?'))return;S=def();save();renderS();renderT();tick();$('menuD').close()};
+
+// tabs
+document.querySelectorAll('nav button').forEach(b=>b.onclick=()=>{document.body.dataset.tab=b.dataset.t;document.querySelectorAll('nav button').forEach(x=>x.classList.toggle('on',x===b))});
+
+renderS();renderT();tick();setInterval(tick,250);
+document.addEventListener('visibilitychange',tick);
+</script>
+</body>
+</html>

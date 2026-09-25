@@ -1,0 +1,930 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>ফটো টু পিডিএফ — স্ক্যানার</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+  :root{
+    --bg:#1c1a17; --panel:#262320; --panel2:#2f2b26; --line:#3a352e;
+    --text:#eee8df; --text-dim:#a39c8f; --amber:#e8a33d; --amber-dim:#8a6326;
+    --danger:#c96a4d; --ok:#7fae7f;
+    --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;background:var(--bg);color:var(--text);
+    font-family:'Noto Sans Bengali','Segoe UI',sans-serif;}
+  .mono{font-family:'JetBrains Mono',monospace;}
+
+  header{
+    padding:22px 24px 16px; border-bottom:1px solid var(--line);
+    position:sticky; top:0; background:linear-gradient(180deg,var(--bg) 80%,transparent);
+    z-index:5;
+  }
+  header h1{margin:0 0 4px; font-size:20px; font-weight:700; letter-spacing:.2px;}
+  header h1 span{color:var(--amber);}
+  header p{margin:0; color:var(--text-dim); font-size:13px;}
+
+  main{max-width:980px; margin:0 auto; padding:20px 16px 60px;}
+
+  .dropzone{
+    border:1.5px dashed var(--amber-dim); border-radius:var(--radius);
+    padding:30px 16px; text-align:center; cursor:pointer;
+    background:var(--panel); transition:.15s border-color, .15s background;
+  }
+  .dropzone:hover, .dropzone.drag{border-color:var(--amber); background:var(--panel2);}
+  .dropzone b{color:var(--amber); font-weight:600;}
+  .dropzone small{display:block; margin-top:6px; color:var(--text-dim); font-size:12px;}
+  input[type=file]{display:none;}
+
+  .filmstrip{
+    margin-top:20px; display:grid; grid-template-columns:repeat(auto-fill,minmax(120px,1fr));
+    gap:12px;
+  }
+  .frame{
+    position:relative; background:var(--panel); border:1px solid var(--line);
+    border-radius:8px; overflow:hidden; cursor:grab; aspect-ratio:3/4;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .frame.dragging{opacity:.35;}
+  .frame img{width:100%; height:100%; object-fit:cover; display:block;}
+  .frame .idx{
+    position:absolute; top:5px; left:6px; font-size:10px; background:rgba(0,0,0,.55);
+    color:var(--amber); padding:1px 6px; border-radius:20px;
+  }
+  .frame .tag{
+    position:absolute; bottom:5px; left:6px; font-size:9px; background:rgba(0,0,0,.6);
+    color:var(--ok); padding:1px 6px; border-radius:20px; letter-spacing:.3px;
+  }
+  .frame .rm{
+    position:absolute; top:4px; right:4px; width:20px; height:20px; border-radius:50%;
+    background:rgba(0,0,0,.55); color:#fff; border:none; cursor:pointer; font-size:13px;
+    line-height:20px; padding:0;
+  }
+  .frame .rm:hover{background:var(--danger);}
+  .frame .edit-btn{
+    position:absolute; inset:auto 0 0 0; text-align:center; padding:5px 0; font-size:11px;
+    background:rgba(232,163,61,.92); color:#20180a; font-weight:600; opacity:0;
+    transition:.12s opacity;
+  }
+  .frame:hover .edit-btn{opacity:1;}
+
+  .panel{
+    margin-top:22px; background:var(--panel); border:1px solid var(--line);
+    border-radius:var(--radius); padding:16px 18px;
+  }
+  .panel h2{margin:0 0 12px; font-size:14px; color:var(--amber); font-weight:600;}
+  .row{display:flex; align-items:center; gap:10px; margin-bottom:10px; flex-wrap:wrap;}
+  .row label{font-size:13px; color:var(--text-dim); min-width:150px;}
+  input[type=range]{accent-color:var(--amber); flex:1; min-width:120px;}
+  input[type=number], select{
+    background:var(--bg); color:var(--text); border:1px solid var(--line); border-radius:6px;
+    padding:5px 8px; font-size:13px; font-family:inherit;
+  }
+  .val{font-size:12px; color:var(--amber); min-width:38px; text-align:right;}
+
+  button.btn{
+    background:var(--amber); color:#20180a; border:none; border-radius:8px;
+    padding:10px 18px; font-weight:600; font-size:13.5px; cursor:pointer; font-family:inherit;
+  }
+  button.btn:hover{background:#f0b559;}
+  button.btn.secondary{background:transparent; color:var(--text); border:1px solid var(--line);}
+  button.btn.secondary:hover{border-color:var(--amber); color:var(--amber);}
+  button.btn:disabled{opacity:.4; cursor:not-allowed;}
+  button.btn.danger{background:var(--danger); color:#2a0f08;}
+
+  .status{font-size:12px; color:var(--text-dim); margin-top:10px; white-space:pre-line;}
+  progress{width:100%; height:8px; accent-color:var(--amber); margin-top:8px;}
+
+  /* editor modal */
+  .modal-bg{
+    position:fixed; inset:0; background:rgba(10,9,7,.88); z-index:50;
+    display:flex; align-items:center; justify-content:center; padding:14px;
+  }
+  .modal{
+    background:var(--panel); border:1px solid var(--line); border-radius:12px;
+    width:100%; max-width:880px; max-height:96vh; overflow:auto; padding:16px;
+  }
+  .modal h3{margin:0 0 4px; font-size:15px; color:var(--amber);}
+  .modal .hint{font-size:12px; color:var(--text-dim); margin-bottom:10px;}
+  .canvas-wrap{
+    position:relative; background:#000; border-radius:8px; overflow:hidden;
+    touch-action:none; user-select:none; margin:0 auto;
+  }
+  .canvas-wrap canvas{display:block; width:100%; height:auto;}
+  .handle{
+    position:absolute; width:22px; height:22px; margin:-11px 0 0 -11px;
+    border-radius:50%; background:var(--amber); border:2px solid #fff;
+    box-shadow:0 0 0 3px rgba(232,163,61,.35); cursor:grab; touch-action:none;
+  }
+  .handle:active{cursor:grabbing;}
+  .modal-actions{display:flex; gap:10px; margin-top:14px; flex-wrap:wrap;}
+  .ink-controls{
+    margin-top:14px; padding-top:12px; border-top:1px solid var(--line);
+  }
+  footer{text-align:center; color:var(--text-dim); font-size:11.5px; padding:20px; opacity:.7;}
+</style>
+</head>
+<body>
+
+<header>
+  <h1>ফটো <span>→</span> পিডিএফ স্ক্যানার</h1>
+  <p>ছবি নির্বাচন করুন, কোনাকুনি ছবি সোজা করে ক্রপ করুন, প্রয়োজনে ইঙ্ক (সাদা-কালো) এফেক্ট দিন — সবশেষে ছোট সাইজের পিডিএফ বানান।</p>
+</header>
+
+<main>
+  <div class="dropzone" id="dropzone">
+    <b>ছবি যোগ করতে ক্লিক করুন</b> — অথবা এখানে টেনে ছাড়ুন
+    <small>একাধিক ছবি একসাথে নেওয়া যাবে (JPG, PNG, WebP)</small>
+  </div>
+  <input type="file" id="fileInput" accept="image/*" multiple>
+
+  <div class="filmstrip" id="filmstrip"></div>
+
+  <div class="panel" id="inkDefaultsPanel" style="display:none;">
+    <h2>ডিফল্ট সেটিং (নতুন ছবিতে প্রয়োগ হবে)</h2>
+    <div class="hint" style="margin-bottom:8px;">প্রতিটি ছবির ক্রপ কোণা ও ইঙ্ক সেন্সিটিভিটি ছবি অনুযায়ী স্বয়ংক্রিয়ভাবে ক্যালকুলেট হয় — কিছু ঘোরাতে হয় না। পছন্দ না হলে এডিটরে গিয়ে নিজে ঠিক করে নিতে পারবেন।</div>
+    <div class="row">
+      <label><input type="checkbox" id="defInkEnabled" checked> নতুন ছবিতে ইঙ্ক এফেক্ট ডিফল্টভাবে চালু রাখুন</label>
+    </div>
+    <div class="row">
+      <label>ইঙ্ক মোড</label>
+      <select id="defInkMode">
+        <option value="adaptive">অ্যাডাপটিভ (অসম আলো ঠিক করে)</option>
+        <option value="global">সাধারণ (এক থ্রেশহোল্ড)</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="panel">
+    <h2>পিডিএফ এক্সপোর্ট</h2>
+    <div class="row">
+      <label>লক্ষ্য মোট সাইজ (MB)</label>
+      <input type="number" id="targetMB" value="5" min="0.5" step="0.5" style="width:80px;">
+      <span class="val" style="color:var(--text-dim); font-size:12px;">যেমন ১০০ পেজ হলে গড়ে ~৫০KB/পেজ</span>
+    </div>
+    <div class="row">
+      <label>পেজ সাইজ</label>
+      <select id="pageSize">
+        <option value="a4">A4</option>
+        <option value="letter">Letter</option>
+        <option value="fit">ছবির অনুপাতে (কাস্টম)</option>
+      </select>
+    </div>
+    <div class="row">
+      <label>সর্বোচ্চ রেজল্যুশন (দীর্ঘ পাশ)</label>
+      <input type="range" id="maxDim" min="900" max="2600" step="50" value="1800">
+      <span class="val mono" id="maxDimVal">1800px</span>
+    </div>
+    <div class="row" style="gap:12px;">
+      <button class="btn" id="exportBtn" disabled>পিডিএফ বানান</button>
+      <button class="btn secondary" id="clearBtn">সব মুছুন</button>
+    </div>
+    <progress id="progressBar" value="0" max="100" style="display:none;"></progress>
+    <div class="status mono" id="status"></div>
+  </div>
+</main>
+
+<footer>সব প্রসেসিং আপনার ব্রাউজারেই হয় — কোনো ছবি সার্ভারে যায় না।</footer>
+
+<div class="modal-bg" id="modalBg" style="display:none;">
+  <div class="modal">
+    <h3>ছবি এডিট করুন</h3>
+    <div class="hint">ক্রপ কোণা ও ইঙ্ক সেন্সিটিভিটি স্বয়ংক্রিয়ভাবে বসানো হয়েছে। পছন্দ না হলে হ্যান্ডেল টেনে কোণা ঠিক করুন, অথবা নিচের স্লাইডার দিয়ে ম্যানুয়াল অ্যাডজাস্ট করুন।</div>
+    <div class="canvas-wrap" id="canvasWrap">
+      <canvas id="editCanvas"></canvas>
+    </div>
+    <div class="row" style="margin-top:10px;">
+      <button class="btn" id="autoBtn">✨ অটো এডজাস্ট (আবার)</button>
+      <button class="btn secondary" id="resetCornersBtn">কোণা রিসেট (পুরো ছবি)</button>
+      <button class="btn secondary" id="rotateBtn">৯০° ঘোরান</button>
+    </div>
+
+    <div class="ink-controls">
+      <div class="row">
+        <label><input type="checkbox" id="inkToggle"> ইঙ্ক এফেক্ট (শুধু সাদা-কালো)</label>
+      </div>
+      <div class="row">
+        <label>মোড</label>
+        <select id="inkMode">
+          <option value="adaptive">অ্যাডাপটিভ (অসম আলো/ছায়া ঠিক করে) — রেকমেন্ডেড</option>
+          <option value="global">সাধারণ (এক থ্রেশহোল্ড সব জায়গায়)</option>
+        </select>
+      </div>
+
+      <div id="globalControls">
+        <div class="row">
+          <label>থ্রেশহোল্ড</label>
+          <input type="range" id="threshold" min="0" max="255" value="150">
+          <span class="val mono" id="thresholdVal">150</span>
+        </div>
+      </div>
+
+      <div id="adaptiveControls">
+        <div class="row">
+          <label>লোকাল এরিয়ার সাইজ</label>
+          <input type="range" id="adaptRadius" min="1" max="15" step="0.5" value="3.5">
+          <span class="val mono" id="adaptRadiusVal">3.5%</span>
+        </div>
+        <div class="row">
+          <label>সেন্সিটিভিটি (বায়াস)</label>
+          <input type="range" id="adaptBias" min="-30" max="30" value="10">
+          <span class="val mono" id="adaptBiasVal">10</span>
+        </div>
+        <div class="hint" style="margin:0 0 8px;">লেখা ফিকে/হারিয়ে গেলে সেন্সিটিভিটি বাড়ান; বেশি কালো দাগ/নয়েজ এলে কমান। এলাকার সাইজ বড় করলে বড় ছায়া/গ্রেডিয়েন্ট আরও ভালোভাবে ঠিক হয়।</div>
+      </div>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn" id="applyEditBtn">প্রয়োগ করুন</button>
+      <button class="btn secondary" id="cancelEditBtn">বাতিল</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  /* ---------------- state ---------------- */
+  let pages = []; // {id, img, corners[4]{x,y} in image px, rotation, ink:{enabled,threshold,tolerance}, thumbCanvas}
+  let uid = 1;
+  let editingPage = null;
+  let dragHandleIdx = -1;
+
+  const $ = (id)=>document.getElementById(id);
+  const fileInput = $('fileInput');
+  const dropzone = $('dropzone');
+  const filmstrip = $('filmstrip');
+  const statusEl = $('status');
+  const inkDefaultsPanel = $('inkDefaultsPanel');
+
+  /* ---------------- upload ---------------- */
+  dropzone.addEventListener('click', ()=>fileInput.click());
+  fileInput.addEventListener('change', e=>handleFiles(e.target.files));
+  ['dragover','dragenter'].forEach(ev=>dropzone.addEventListener(ev, e=>{e.preventDefault(); dropzone.classList.add('drag');}));
+  ['dragleave','drop'].forEach(ev=>dropzone.addEventListener(ev, e=>{e.preventDefault(); dropzone.classList.remove('drag');}));
+  dropzone.addEventListener('drop', e=>{ if(e.dataTransfer.files.length) handleFiles(e.dataTransfer.files); });
+
+  function handleFiles(fileList){
+    const files = Array.from(fileList).filter(f=>f.type.startsWith('image/'));
+    if(!files.length) return;
+    let remaining = files.length;
+    files.forEach(file=>{
+      const reader = new FileReader();
+      reader.onload = ev=>{
+        const img = new Image();
+        img.onload = ()=>{
+          const autoCorners = autoDetectCorners(img);
+          const corners = autoCorners || [
+            {x:0,y:0},{x:img.width,y:0},{x:img.width,y:img.height},{x:0,y:img.height}
+          ];
+          const inkParams = autoInkParams();
+          const page = {
+            id: uid++,
+            img,
+            corners,
+            rotation:0,
+            ink: {
+              enabled: $('defInkEnabled').checked,
+              mode: $('defInkMode').value,
+              threshold: 150,
+              adaptRadius: inkParams.adaptRadius,
+              adaptBias: inkParams.adaptBias
+            },
+            cropped: !!autoCorners
+          };
+          pages.push(page);
+          renderFilmstrip();
+          updateExportEnabled();
+          if(--remaining===0) inkDefaultsPanel.style.display='block';
+        };
+        img.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    });
+    fileInput.value = '';
+  }
+
+  /* ---------------- filmstrip / thumbnails ---------------- */
+  function makeThumb(page, maxSize){
+    maxSize = maxSize || 300;
+    const c = renderFinalCanvas(page, maxSize);
+    return c;
+  }
+
+  function renderFilmstrip(){
+    filmstrip.innerHTML = '';
+    pages.forEach((page, i)=>{
+      const frame = document.createElement('div');
+      frame.className = 'frame';
+      frame.draggable = true;
+      frame.dataset.id = page.id;
+
+      const thumb = makeThumb(page, 260);
+      const imgEl = document.createElement('img');
+      imgEl.src = thumb.toDataURL('image/jpeg', 0.7);
+      frame.appendChild(imgEl);
+
+      const idx = document.createElement('div');
+      idx.className = 'idx'; idx.textContent = (i+1);
+      frame.appendChild(idx);
+
+      if(page.cropped || page.ink.enabled){
+        const tag = document.createElement('div');
+        tag.className = 'tag';
+        tag.textContent = page.ink.enabled ? 'ইঙ্ক' : 'ক্রপড';
+        frame.appendChild(tag);
+      }
+
+      const rm = document.createElement('button');
+      rm.className = 'rm'; rm.textContent = '✕';
+      rm.onclick = (e)=>{ e.stopPropagation(); pages = pages.filter(p=>p.id!==page.id); renderFilmstrip(); updateExportEnabled(); };
+      frame.appendChild(rm);
+
+      const editBtn = document.createElement('div');
+      editBtn.className = 'edit-btn'; editBtn.textContent = 'এডিট করুন';
+      frame.appendChild(editBtn);
+
+      frame.addEventListener('click', ()=>openEditor(page));
+
+      // reorder via drag
+      frame.addEventListener('dragstart', e=>{ frame.classList.add('dragging'); e.dataTransfer.setData('text/plain', page.id); });
+      frame.addEventListener('dragend', ()=> frame.classList.remove('dragging'));
+      frame.addEventListener('dragover', e=>e.preventDefault());
+      frame.addEventListener('drop', e=>{
+        e.preventDefault();
+        const draggedId = parseInt(e.dataTransfer.getData('text/plain'));
+        if(draggedId === page.id) return;
+        const fromIdx = pages.findIndex(p=>p.id===draggedId);
+        const toIdx = pages.findIndex(p=>p.id===page.id);
+        const [moved] = pages.splice(fromIdx,1);
+        pages.splice(toIdx,0,moved);
+        renderFilmstrip();
+      });
+
+      filmstrip.appendChild(frame);
+    });
+  }
+
+  function updateExportEnabled(){
+    $('exportBtn').disabled = pages.length===0;
+  }
+
+  $('clearBtn').addEventListener('click', ()=>{
+    if(pages.length && !confirm('সব ছবি মুছে ফেলবেন?')) return;
+    pages = []; renderFilmstrip(); updateExportEnabled();
+    inkDefaultsPanel.style.display='none'; statusEl.textContent='';
+  });
+
+  /* ---------------- geometry: triangle affine warp ---------------- */
+  function getTriangleTransform(sx0,sy0,sx1,sy1,sx2,sy2, dx0,dy0,dx1,dy1,dx2,dy2){
+    const denom = sx0*(sy1-sy2) - sx1*(sy0-sy2) + sx2*(sy0-sy1);
+    if (Math.abs(denom) < 1e-10) return null;
+    const a = (dx0*(sy1-sy2) - dx1*(sy0-sy2) + dx2*(sy0-sy1)) / denom;
+    const c = (sx0*(dx1-dx2) - sx1*(dx0-dx2) + sx2*(dx0-dx1)) / denom;
+    const e = (sx0*(sy1*dx2 - sy2*dx1) - sx1*(sy0*dx2 - sy2*dx0) + sx2*(sy0*dx1 - sy1*dx0)) / denom;
+    const b = (dy0*(sy1-sy2) - dy1*(sy0-sy2) + dy2*(sy0-sy1)) / denom;
+    const d = (sx0*(dy1-dy2) - sx1*(dy0-dy2) + sx2*(dy0-dy1)) / denom;
+    const f = (sx0*(sy1*dy2 - sy2*dy1) - sx1*(sy0*dy2 - sy2*dy0) + sx2*(sy0*dy1 - sy1*dy0)) / denom;
+    return [a,b,c,d,e,f];
+  }
+
+  function drawTriangle(ctx, img, sx0,sy0,sx1,sy1,sx2,sy2, dx0,dy0,dx1,dy1,dx2,dy2){
+    const m = getTriangleTransform(sx0,sy0,sx1,sy1,sx2,sy2, dx0,dy0,dx1,dy1,dx2,dy2);
+    if(!m) return;
+    ctx.save();
+    ctx.beginPath();
+    ctx.moveTo(dx0,dy0); ctx.lineTo(dx1,dy1); ctx.lineTo(dx2,dy2); ctx.closePath();
+    ctx.clip();
+    ctx.transform(m[0],m[1],m[2],m[3],m[4],m[5]);
+    ctx.imageSmoothingEnabled = true; ctx.imageSmoothingQuality = 'high';
+    ctx.drawImage(img,0,0);
+    ctx.restore();
+  }
+
+  // warp quad (4 src corners on img) into rectangle outW x outH
+  function warpQuadToRect(img, corners, outW, outH){
+    const c = document.createElement('canvas');
+    c.width = Math.max(1,Math.round(outW));
+    c.height = Math.max(1,Math.round(outH));
+    const ctx = c.getContext('2d');
+    const s = corners; // [TL,TR,BR,BL]
+    const d = [{x:0,y:0},{x:c.width,y:0},{x:c.width,y:c.height},{x:0,y:c.height}];
+    drawTriangle(ctx, img, s[0].x,s[0].y, s[1].x,s[1].y, s[2].x,s[2].y, d[0].x,d[0].y, d[1].x,d[1].y, d[2].x,d[2].y);
+    drawTriangle(ctx, img, s[0].x,s[0].y, s[2].x,s[2].y, s[3].x,s[3].y, d[0].x,d[0].y, d[2].x,d[2].y, d[3].x,d[3].y);
+    return c;
+  }
+
+  function dist(a,b){ return Math.hypot(a.x-b.x, a.y-b.y); }
+
+  /* ---------------- auto crop detection ---------------- */
+  // Finds the document's bounding box by comparing pixels against the
+  // background color sampled from the image border, using a row/column
+  // vote so a few stray noisy pixels can't throw the box off.
+  // Returns [{x,y} x4] in original image coordinates, or null when no
+  // confident border can be found (e.g. the document already fills the frame).
+  function autoDetectCorners(img){
+    const maxWork = 260;
+    const scale = Math.min(1, maxWork / Math.max(img.width, img.height));
+    const ww = Math.max(1, Math.round(img.width*scale)), wh = Math.max(1, Math.round(img.height*scale));
+    const c = document.createElement('canvas');
+    c.width = ww; c.height = wh;
+    const ctx = c.getContext('2d');
+    ctx.drawImage(img, 0, 0, ww, wh);
+    const data = ctx.getImageData(0,0,ww,wh).data;
+
+    const gray = new Float32Array(ww*wh);
+    for(let p=0, i=0; p<ww*wh; p++, i+=4){
+      gray[p] = 0.299*data[i] + 0.587*data[i+1] + 0.114*data[i+2];
+    }
+
+    // estimate background from a thin border strip
+    const bw = Math.max(2, Math.round(Math.min(ww,wh)*0.04));
+    let bgSum=0, bgCount=0;
+    for(let y=0;y<wh;y++) for(let x=0;x<ww;x++){
+      if(x<bw || x>=ww-bw || y<bw || y>=wh-bw){ bgSum += gray[y*ww+x]; bgCount++; }
+    }
+    const bg = bgCount ? bgSum/bgCount : 128;
+
+    let sum=0, sumSq=0;
+    const diff = new Float32Array(ww*wh);
+    for(let p=0;p<gray.length;p++){
+      diff[p] = Math.abs(gray[p]-bg);
+      sum += gray[p]; sumSq += gray[p]*gray[p];
+    }
+    const total = gray.length;
+    const mean = sum/total;
+    const variance = Math.max(0, sumSq/total - mean*mean);
+    const stdDev = Math.sqrt(variance);
+
+    const threshDiff = Math.max(18, stdDev*0.35);
+    const rowCount = new Array(wh).fill(0), colCount = new Array(ww).fill(0);
+    for(let y=0;y<wh;y++) for(let x=0;x<ww;x++){
+      if(diff[y*ww+x] > threshDiff){ rowCount[y]++; colCount[x]++; }
+    }
+    const rowMin = Math.max(5, Math.round(ww*0.035));
+    const colMin = Math.max(5, Math.round(wh*0.035));
+    let minY=0, maxY=wh-1, minX=0, maxX=ww-1;
+    while(minY<wh && rowCount[minY]<rowMin) minY++;
+    while(maxY>=0 && rowCount[maxY]<rowMin) maxY--;
+    while(minX<ww && colCount[minX]<colMin) minX++;
+    while(maxX>=0 && colCount[maxX]<colMin) maxX--;
+
+    if(minY>maxY || minX>maxX) return null;
+    const boxArea = (maxX-minX)*(maxY-minY), fullArea = ww*wh;
+    // too big (basically the whole frame, e.g. an already-cropped screenshot) or
+    // too small (probably noise, not a real document edge) -> don't guess, use full image
+    if(boxArea > fullArea*0.9 || boxArea < fullArea*0.03) return null;
+
+    const padX = Math.round((maxX-minX)*0.015)+1, padY = Math.round((maxY-minY)*0.015)+1;
+    const bx0 = Math.max(0, minX-padX), by0 = Math.max(0, minY-padY);
+    const bx1 = Math.min(ww-1, maxX+padX), by1 = Math.min(wh-1, maxY+padY);
+    const sx = img.width/ww, sy = img.height/wh;
+    const corners = [
+      {x:bx0*sx, y:by0*sy}, {x:(bx1+1)*sx, y:by0*sy},
+      {x:(bx1+1)*sx, y:(by1+1)*sy}, {x:bx0*sx, y:(by1+1)*sy}
+    ];
+    corners.forEach(p=>{
+      p.x = Math.min(img.width, Math.max(0, p.x));
+      p.y = Math.min(img.height, Math.max(0, p.y));
+    });
+    return corners;
+  }
+
+  // Sensible general-purpose ink defaults. The adaptive algorithm itself (comparing
+  // each pixel to its own local neighborhood) is what handles uneven lighting, so
+  // fixed defaults work well across most scanned photos without per-image tuning.
+  function autoInkParams(){
+    return { adaptRadius: 3.5, adaptBias: 10 };
+  }
+
+  function cropOutputSize(corners){
+    const w = Math.round((dist(corners[0],corners[1]) + dist(corners[3],corners[2])) / 2);
+    const h = Math.round((dist(corners[0],corners[3]) + dist(corners[1],corners[2])) / 2);
+    return { w: Math.max(20,w), h: Math.max(20,h) };
+  }
+
+  function rotateCanvas(src, deg){
+    if(deg % 360 === 0) return src;
+    const rad = deg*Math.PI/180;
+    const swap = Math.abs(deg%180)===90;
+    const c = document.createElement('canvas');
+    c.width = swap ? src.height : src.width;
+    c.height = swap ? src.width : src.height;
+    const ctx = c.getContext('2d');
+    ctx.translate(c.width/2, c.height/2);
+    ctx.rotate(rad);
+    ctx.drawImage(src, -src.width/2, -src.height/2);
+    return c;
+  }
+
+  /* ---------------- ink (B/W) effect ---------------- */
+  // opts: { mode:'global'|'adaptive', threshold, adaptRadiusPercent, adaptBias }
+  function applyInk(canvas, opts){
+    const w = canvas.width, h = canvas.height;
+    const ctx = canvas.getContext('2d');
+    const imgData = ctx.getImageData(0,0,w,h);
+    const d = imgData.data;
+
+    // grayscale buffer
+    const gray = new Float32Array(w*h);
+    for(let i=0, p=0; i<d.length; i+=4, p++){
+      gray[p] = 0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2];
+    }
+
+    if(opts.mode === 'adaptive'){
+      // compare each pixel to the average brightness of its own neighborhood,
+      // so shading gradients / uneven lighting across the page don't break the threshold.
+      // radius is a % of the longest side, so it behaves the same at any resolution.
+      const pct = opts.adaptRadiusPercent!=null ? opts.adaptRadiusPercent : 3.5;
+      const r = Math.max(1, Math.round((pct/100) * Math.max(w,h)));
+      const localMean = boxBlur(gray, w, h, r);
+      const bias = opts.adaptBias||0;
+      for(let p=0, i=0; p<gray.length; p++, i+=4){
+        const v = gray[p] < (localMean[p] + bias) ? 0 : 255;
+        d[i]=v; d[i+1]=v; d[i+2]=v; d[i+3]=255;
+      }
+    } else {
+      const threshold = opts.threshold!=null ? opts.threshold : 150;
+      for(let p=0, i=0; p<gray.length; p++, i+=4){
+        const v = gray[p] < threshold ? 0 : 255;
+        d[i]=v; d[i+1]=v; d[i+2]=v; d[i+3]=255;
+      }
+    }
+    ctx.putImageData(imgData,0,0);
+    return canvas;
+  }
+
+  function boxBlur(src, w, h, r){
+    const out = new Float32Array(w*h);
+    const tmp = new Float32Array(w*h);
+    // horizontal
+    for(let y=0;y<h;y++){
+      let sum=0, cnt=0;
+      for(let x=-r; x<=r; x++){ const xx=Math.min(w-1,Math.max(0,x)); sum+=src[y*w+xx]; cnt++; }
+      for(let x=0;x<w;x++){
+        tmp[y*w+x] = sum/cnt;
+        const addX = Math.min(w-1, x+r+1), remX = Math.max(0, x-r);
+        sum += src[y*w+addX] - src[y*w+remX];
+      }
+    }
+    // vertical
+    for(let x=0;x<w;x++){
+      let sum=0, cnt=0;
+      for(let y=-r; y<=r; y++){ const yy=Math.min(h-1,Math.max(0,y)); sum+=tmp[yy*w+x]; cnt++; }
+      for(let y=0;y<h;y++){
+        out[y*w+x] = sum/cnt;
+        const addY = Math.min(h-1, y+r+1), remY = Math.max(0, y-r);
+        sum += tmp[addY*w+x] - tmp[remY*w+x];
+      }
+    }
+    return out;
+  }
+
+  /* ---------------- render final processed canvas for a page ---------------- */
+  function renderFinalCanvas(page, maxDim){
+    const corners = page.corners;
+    let out = cropOutputSize(corners);
+    // clamp resolution
+    if(maxDim){
+      const longest = Math.max(out.w, out.h);
+      if(longest > maxDim){
+        const scale = maxDim/longest;
+        out = { w: Math.round(out.w*scale), h: Math.round(out.h*scale) };
+      }
+    }
+    let canvas = warpQuadToRect(page.img, corners, out.w, out.h);
+    if(page.rotation) canvas = rotateCanvas(canvas, page.rotation);
+    if(page.ink.enabled){
+      canvas = applyInk(canvas, {
+        mode: page.ink.mode, threshold: page.ink.threshold,
+        adaptRadiusPercent: page.ink.adaptRadius, adaptBias: page.ink.adaptBias
+      });
+    }
+    return canvas;
+  }
+
+  /* ---------------- editor modal ---------------- */
+  const modalBg = $('modalBg');
+  const editCanvas = $('editCanvas');
+  const canvasWrap = $('canvasWrap');
+  let editScale = 1, editHandles = [];
+  let previewBase = null; // offscreen canvas holding the original (color) preview-res image
+  let previewInkCache = null; // offscreen canvas holding last computed ink version
+  let previewInkDirty = true;
+
+  function openEditor(page){
+    editingPage = page;
+    $('inkToggle').checked = page.ink.enabled;
+    $('inkMode').value = page.ink.mode;
+    $('threshold').value = page.ink.threshold;
+    $('thresholdVal').textContent = page.ink.threshold;
+    $('adaptRadius').value = page.ink.adaptRadius;
+    $('adaptRadiusVal').textContent = page.ink.adaptRadius;
+    $('adaptBias').value = page.ink.adaptBias;
+    $('adaptBiasVal').textContent = page.ink.adaptBias;
+    updateInkModeVisibility();
+
+    const img = page.img;
+    const maxW = Math.min(820, window.innerWidth - 60);
+    const scale = Math.min(maxW/img.width, 560/img.height, 1);
+    editScale = scale;
+    editCanvas.width = img.width*scale;
+    editCanvas.height = img.height*scale;
+    canvasWrap.style.width = editCanvas.width+'px';
+
+    previewBase = document.createElement('canvas');
+    previewBase.width = editCanvas.width;
+    previewBase.height = editCanvas.height;
+    previewBase.getContext('2d').drawImage(img, 0,0, editCanvas.width, editCanvas.height);
+    previewInkCache = null;
+    previewInkDirty = true;
+
+    drawEditorPreview();
+    layoutHandles();
+    modalBg.style.display = 'flex';
+  }
+
+  function getInkPreviewCanvas(){
+    if(!previewInkDirty && previewInkCache) return previewInkCache;
+    const clone = document.createElement('canvas');
+    clone.width = previewBase.width; clone.height = previewBase.height;
+    clone.getContext('2d').drawImage(previewBase, 0, 0);
+    applyInk(clone, {
+      mode: editingPage.ink.mode, threshold: editingPage.ink.threshold,
+      adaptRadiusPercent: editingPage.ink.adaptRadius, adaptBias: editingPage.ink.adaptBias
+    });
+    previewInkCache = clone;
+    previewInkDirty = false;
+    return clone;
+  }
+
+  function drawEditorPreview(){
+    const ctx = editCanvas.getContext('2d');
+    ctx.clearRect(0,0,editCanvas.width, editCanvas.height);
+    const source = editingPage.ink.enabled ? getInkPreviewCanvas() : previewBase;
+    ctx.drawImage(source, 0, 0);
+    // dim outside quad
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,.45)';
+    ctx.beginPath();
+    ctx.rect(0,0,editCanvas.width, editCanvas.height);
+    const c = editingPage.corners;
+    ctx.moveTo(c[0].x*editScale, c[0].y*editScale);
+    ctx.lineTo(c[3].x*editScale, c[3].y*editScale);
+    ctx.lineTo(c[2].x*editScale, c[2].y*editScale);
+    ctx.lineTo(c[1].x*editScale, c[1].y*editScale);
+    ctx.closePath();
+    ctx.fill('evenodd');
+    ctx.restore();
+
+    ctx.strokeStyle = '#e8a33d'; ctx.lineWidth = 2;
+    ctx.beginPath();
+    c.forEach((p,i)=>{
+      const x=p.x*editScale, y=p.y*editScale;
+      if(i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    });
+    ctx.closePath(); ctx.stroke();
+  }
+
+  function layoutHandles(){
+    editHandles.forEach(h=>h.remove());
+    editHandles = [];
+    editingPage.corners.forEach((p, i)=>{
+      const h = document.createElement('div');
+      h.className = 'handle';
+      h.style.left = (p.x*editScale)+'px';
+      h.style.top = (p.y*editScale)+'px';
+      h.dataset.idx = i;
+      h.addEventListener('pointerdown', onHandleDown);
+      canvasWrap.appendChild(h);
+      editHandles.push(h);
+    });
+  }
+
+  function onHandleDown(e){
+    e.preventDefault();
+    dragHandleIdx = parseInt(e.target.dataset.idx);
+    const move = (ev)=>{
+      const rect = canvasWrap.getBoundingClientRect();
+      const dispScale = editCanvas.width / rect.width; // account for CSS scaling on mobile
+      let x = (ev.clientX - rect.left) * dispScale;
+      let y = (ev.clientY - rect.top) * dispScale;
+      x = Math.max(0, Math.min(editCanvas.width, x));
+      y = Math.max(0, Math.min(editCanvas.height, y));
+      editingPage.corners[dragHandleIdx] = { x: x/editScale, y: y/editScale };
+      editHandles[dragHandleIdx].style.left = x+'px';
+      editHandles[dragHandleIdx].style.top = y+'px';
+      drawEditorPreview();
+    };
+    const up = ()=>{
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+    };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+  }
+
+  $('resetCornersBtn').addEventListener('click', ()=>{
+    const img = editingPage.img;
+    editingPage.corners = [{x:0,y:0},{x:img.width,y:0},{x:img.width,y:img.height},{x:0,y:img.height}];
+    drawEditorPreview(); layoutHandles();
+  });
+
+  $('rotateBtn').addEventListener('click', ()=>{
+    editingPage.rotation = (editingPage.rotation + 90) % 360;
+  });
+
+  $('autoBtn').addEventListener('click', ()=>{
+    const autoCorners = autoDetectCorners(editingPage.img);
+    if(autoCorners){
+      editingPage.corners = autoCorners;
+    } else {
+      const img = editingPage.img;
+      editingPage.corners = [{x:0,y:0},{x:img.width,y:0},{x:img.width,y:img.height},{x:0,y:img.height}];
+    }
+    const inkParams = autoInkParams();
+    editingPage.ink.adaptRadius = inkParams.adaptRadius;
+    editingPage.ink.adaptBias = inkParams.adaptBias;
+    $('adaptRadius').value = inkParams.adaptRadius;
+    $('adaptRadiusVal').textContent = inkParams.adaptRadius+'%';
+    $('adaptBias').value = inkParams.adaptBias;
+    $('adaptBiasVal').textContent = inkParams.adaptBias;
+    previewInkDirty = true;
+    drawEditorPreview();
+    layoutHandles();
+    if(!autoCorners) statusEl.textContent = 'অটো ক্রপ নিশ্চিতভাবে বসাতে পারিনি (ব্যাকগ্রাউন্ড থেকে পেজ আলাদা করা যায়নি) — কোণা ম্যানুয়ালি বসিয়ে দিন।';
+  });
+
+  function updateInkModeVisibility(){
+    const mode = $('inkMode').value;
+    $('globalControls').style.display = mode==='global' ? '' : 'none';
+    $('adaptiveControls').style.display = mode==='adaptive' ? '' : 'none';
+  }
+
+  $('inkToggle').addEventListener('change', e=>{
+    editingPage.ink.enabled = e.target.checked;
+    previewInkDirty = true;
+    drawEditorPreview();
+  });
+  $('inkMode').addEventListener('change', e=>{
+    editingPage.ink.mode = e.target.value;
+    updateInkModeVisibility();
+    previewInkDirty = true;
+    drawEditorPreview();
+  });
+  $('threshold').addEventListener('input', e=>{
+    editingPage.ink.threshold = parseInt(e.target.value);
+    $('thresholdVal').textContent = e.target.value;
+    previewInkDirty = true;
+    drawEditorPreview();
+  });
+  $('adaptRadius').addEventListener('input', e=>{
+    editingPage.ink.adaptRadius = parseFloat(e.target.value);
+    $('adaptRadiusVal').textContent = e.target.value+'%';
+    previewInkDirty = true;
+    drawEditorPreview();
+  });
+  $('adaptBias').addEventListener('input', e=>{
+    editingPage.ink.adaptBias = parseInt(e.target.value);
+    $('adaptBiasVal').textContent = e.target.value;
+    previewInkDirty = true;
+    drawEditorPreview();
+  });
+
+  $('applyEditBtn').addEventListener('click', ()=>{
+    editingPage.cropped = true;
+    modalBg.style.display = 'none';
+    renderFilmstrip();
+  });
+  $('cancelEditBtn').addEventListener('click', ()=>{
+    modalBg.style.display = 'none';
+  });
+
+  $('maxDim').addEventListener('input', e=> $('maxDimVal').textContent = e.target.value+'px');
+
+  /* ---------------- PDF export with size budget ---------------- */
+  function canvasToJpegBytes(canvas, quality){
+    const dataUrl = canvas.toDataURL('image/jpeg', quality);
+    const base64 = dataUrl.split(',')[1];
+    return { dataUrl, bytes: Math.round(base64.length*0.75) };
+  }
+  function canvasToPngBytes(canvas){
+    const dataUrl = canvas.toDataURL('image/png');
+    const base64 = dataUrl.split(',')[1];
+    return { dataUrl, bytes: Math.round(base64.length*0.75) };
+  }
+
+  // binary-search JPEG quality to fit under byte budget
+  function fitJpeg(canvas, budgetBytes){
+    let lo=0.08, hi=0.94, best=null;
+    for(let i=0;i<7;i++){
+      const q = (lo+hi)/2;
+      const r = canvasToJpegBytes(canvas, q);
+      if(r.bytes <= budgetBytes){ best = r; lo = q; } else { hi = q; }
+    }
+    if(!best) best = canvasToJpegBytes(canvas, 0.08);
+    return best;
+  }
+
+  function downscaleCanvas(canvas, factor){
+    const c = document.createElement('canvas');
+    c.width = Math.max(20, Math.round(canvas.width*factor));
+    c.height = Math.max(20, Math.round(canvas.height*factor));
+    c.getContext('2d').drawImage(canvas, 0,0,c.width,c.height);
+    return c;
+  }
+
+  $('exportBtn').addEventListener('click', async ()=>{
+    if(!pages.length) return;
+    const { jsPDF } = window.jspdf;
+    const targetMB = parseFloat($('targetMB').value) || 5;
+    const targetBytes = targetMB * 1024 * 1024 * 0.92; // safety margin for pdf overhead
+    const perPageBudget = targetBytes / pages.length;
+    const maxDim = parseInt($('maxDim').value);
+    const pageSizeMode = $('pageSize').value;
+
+    const progressBar = $('progressBar');
+    progressBar.style.display='block'; progressBar.value=0; progressBar.max=pages.length;
+    $('exportBtn').disabled = true;
+    statusEl.textContent = 'প্রসেস হচ্ছে...';
+
+    let pdf = null;
+    let totalBytes = 0;
+    let lines = [];
+
+    for(let i=0;i<pages.length;i++){
+      const page = pages[i];
+      let canvas = renderFinalCanvas(page, maxDim);
+
+      let result, usedFormat;
+      if(page.ink.enabled){
+        result = canvasToPngBytes(canvas);
+        usedFormat = 'PNG';
+        // ink images are near-binary and usually tiny; if still oversized, downscale
+        let tries = 0;
+        while(result.bytes > perPageBudget && tries < 4){
+          canvas = downscaleCanvas(canvas, 0.75);
+          result = canvasToPngBytes(canvas);
+          tries++;
+        }
+      } else {
+        result = fitJpeg(canvas, perPageBudget);
+        usedFormat = 'JPEG';
+        let tries = 0;
+        while(result.bytes > perPageBudget*1.15 && tries < 4){
+          canvas = downscaleCanvas(canvas, 0.8);
+          result = fitJpeg(canvas, perPageBudget);
+          tries++;
+        }
+      }
+      totalBytes += result.bytes;
+      lines.push('পেজ '+(i+1)+': '+usedFormat+' — '+(result.bytes/1024).toFixed(0)+' KB');
+
+      // page dimensions in mm
+      let pw, ph;
+      if(pageSizeMode==='fit'){
+        const mmPerPx = 210/Math.max(canvas.width, canvas.height); // scale to A4-ish max dimension
+        pw = canvas.width*mmPerPx; ph = canvas.height*mmPerPx;
+      } else {
+        const size = pageSizeMode==='a4' ? [210,297] : [215.9,279.4];
+        pw = size[0]; ph = size[1];
+      }
+
+      if(!pdf){
+        pdf = new jsPDF({ unit:'mm', format: pageSizeMode==='fit' ? [pw,ph] : pageSizeMode, orientation: pw>ph ? 'l':'p' });
+      } else {
+        pdf.addPage(pageSizeMode==='fit' ? [pw,ph] : pageSizeMode, pw>ph?'l':'p');
+      }
+
+      // fit image within page with small margin, preserve aspect
+      const margin = 0;
+      const availW = pw - margin*2, availH = ph - margin*2;
+      const imgRatio = canvas.width/canvas.height;
+      let dw = availW, dh = availW/imgRatio;
+      if(dh > availH){ dh = availH; dw = availH*imgRatio; }
+      const dx = (pw-dw)/2, dy = (ph-dh)/2;
+
+      pdf.addImage(result.dataUrl, usedFormat, dx, dy, dw, dh, undefined, 'MEDIUM');
+
+      progressBar.value = i+1;
+      statusEl.textContent = 'পেজ '+(i+1)+'/'+pages.length+' প্রসেস হচ্ছে...';
+      await new Promise(r=>setTimeout(r, 0)); // let UI breathe
+    }
+
+    pdf.save('scanned-document.pdf');
+
+    progressBar.style.display='none';
+    $('exportBtn').disabled = false;
+    const totalMB = (totalBytes/1024/1024).toFixed(2);
+    statusEl.textContent = 'সম্পন্ন ✓  মোট আনুমানিক সাইজ: '+totalMB+' MB  ('+pages.length+' পেজ)\\n' + lines.join('\\n');
+  });
+
+})();
+</script>
+</body>
+</html>

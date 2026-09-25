@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ইসলামিক ক্যালেন্ডার — বাংলাদেশ (অফলাইন)</title>
+<style>
+  :root{
+    --bg:#0e1116; --card:#161a21; --border:#262b34; --text:#eef0f3;
+    --sub:#9aa4b2; --accent:#2fae7a; --accent2:#5b8cff; --gold:#e2b23a; --fri:#ff8a7a;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; font-family:"Noto Sans Bengali",-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;
+    background:var(--bg); color:var(--text); padding:20px 12px 60px;
+  }
+  .wrap{max-width:820px; margin:0 auto;}
+  h1{font-size:21px; margin:0 0 4px; text-align:center;}
+  p.sub{color:var(--sub); text-align:center; font-size:13px; margin:0 0 18px;}
+  .card{background:var(--card); border:1px solid var(--border); border-radius:14px; padding:16px; margin-bottom:16px;}
+  .divgrid{display:grid; grid-template-columns:repeat(4,1fr); gap:8px;}
+  @media(max-width:480px){.divgrid{grid-template-columns:repeat(2,1fr);}}
+  .divbtn{
+    background:#0d1014; border:1px solid var(--border); color:var(--text); border-radius:10px;
+    padding:10px 6px; font-size:13px; cursor:pointer; text-align:center; transition:.15s;
+  }
+  .divbtn.active{background:var(--accent); border-color:var(--accent); color:#04140c; font-weight:700;}
+  .status{font-size:12px; color:var(--sub); margin-top:10px; text-align:center;}
+  .datebar{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:14px;}
+  .datebar .datelabel{text-align:center; flex:1;}
+  .datebar .datelabel b{display:block; font-size:16px;}
+  .datebar .datelabel span{display:block; font-size:12px; color:var(--sub); margin-top:2px;}
+  .navbtn{
+    background:#0d1014; border:1px solid var(--border); color:var(--text); border-radius:10px;
+    width:40px; height:40px; font-size:18px; cursor:pointer; flex-shrink:0;
+  }
+  .prayers{display:grid; grid-template-columns:repeat(3,1fr); gap:10px;}
+  @media(max-width:480px){.prayers{grid-template-columns:repeat(2,1fr);}}
+  .ptile{background:#0d1014; border:1px solid var(--border); border-radius:12px; padding:12px; text-align:center;}
+  .ptile.tahajjud{border-color:var(--gold); background:rgba(226,178,58,.07);}
+  .ptile.current{border-color:var(--accent); background:rgba(47,174,122,.1);}
+  .ptile .pname{font-size:13px; color:var(--sub); margin-bottom:6px;}
+  .ptile .prange{font-size:14px; font-weight:700; line-height:1.5;}
+  .ptile .prange small{display:block; font-weight:400; color:var(--sub); font-size:11px;}
+  .calhead{display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;}
+  .calhead h3{font-size:15px; margin:0;}
+  .legend{display:flex; gap:14px; font-size:11px; color:var(--sub); flex-wrap:wrap;}
+  .legend span{display:inline-flex; align-items:center; gap:4px;}
+  .legend i{width:8px; height:8px; border-radius:2px; display:inline-block;}
+  .grid{display:grid; grid-template-columns:repeat(7,1fr); gap:5px;}
+  .dow{text-align:center; font-size:11px; color:var(--sub); padding-bottom:4px;}
+  .dow.fri{color:var(--fri);}
+  .cell{
+    background:#0d1014; border:1px solid var(--border); border-radius:8px; padding:5px 3px;
+    min-height:68px; cursor:pointer; text-align:center; transition:.15s;
+  }
+  .cell:hover{border-color:var(--accent2);}
+  .cell.empty{background:transparent; border:none; cursor:default;}
+  .cell.selected{border-color:var(--accent); background:rgba(47,174,122,.12);}
+  .cell.today{box-shadow:inset 0 0 0 1px var(--gold);}
+  .cell .g{font-size:14px; font-weight:700;}
+  .cell.fri .g{color:var(--fri);}
+  .cell .b{font-size:10px; color:var(--accent2); margin-top:3px;}
+  .cell .h{font-size:10px; color:var(--gold); margin-top:1px;}
+  .note{font-size:11.5px; color:var(--sub); margin-top:12px; line-height:1.6;}
+  .hidden{display:none;}
+  .offline-badge{
+    display:inline-block; background:rgba(47,174,122,.15); color:var(--accent);
+    border-radius:6px; padding:3px 10px; font-size:11px; margin:0 auto 14px; text-align:center;
+  }
+  .badgewrap{text-align:center;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🌙 ইসলামিক ক্যালেন্ডার — বাংলাদেশ</h1>
+  <p class="sub">বিভাগ নির্বাচন করুন — নামাজের সময় ও তিন ধরনের তারিখ (ইংরেজি · বাংলা · আরবি) দেখুন</p>
+  <div class="badgewrap"><span class="offline-badge">⚡ সম্পূর্ণ অফলাইন — কোনো ইন্টারনেট লাগে না, সব হিসাব ফোনে/ব্রাউজারেই হয়</span></div>
+
+  <div class="card">
+    <div class="divgrid" id="divGrid"></div>
+    <div class="status" id="divStatus">বিভাগ নির্বাচন করা হয়নি</div>
+  </div>
+
+  <div id="appBody" class="hidden">
+    <div class="card">
+      <div class="datebar">
+        <button class="navbtn" id="prevMonth">‹</button>
+        <div class="datelabel">
+          <b id="selDateG">—</b>
+          <span id="selDateB">—</span>
+          <span id="selDateH">—</span>
+        </div>
+        <button class="navbtn" id="nextMonth">›</button>
+      </div>
+      <div class="prayers" id="prayerTiles"></div>
+    </div>
+
+    <div class="card">
+      <div class="calhead">
+        <h3 id="calTitle">মাসিক ক্যালেন্ডার</h3>
+        <div class="legend">
+          <span><i style="background:var(--text)"></i> ইংরেজি</span>
+          <span><i style="background:var(--accent2)"></i> বাংলা</span>
+          <span><i style="background:var(--gold)"></i> আরবি (হিজরি)</span>
+        </div>
+      </div>
+      <div class="grid" id="dowRow"></div>
+      <div class="grid" id="calGrid" style="margin-top:6px;"></div>
+      <div class="note">প্রতিটি বক্সে উপরে সাদা রঙে ইংরেজি তারিখ, মাঝে নীল রঙে বাংলা তারিখ ও নিচে সোনালি রঙে হিজরি (আরবি) তারিখ দেখানো হয়েছে। যেকোনো দিনে ক্লিক করলে উপরে সেই দিনের নামাজের সময় দেখাবে। শুক্রবার লাল রঙে চিহ্নিত। নামাজের সময় জ্যোতির্বৈজ্ঞানিক সূত্র দিয়ে সরাসরি হিসাব করা (ফজর/এশার কৌণিক মান ১৮°, আসর হানাফি পদ্ধতি) — এটি ইন্টারনেটের উপর নির্ভর করে না। বাংলা তারিখ সংস্কারকৃত (২০১৯) বাংলা একাডেমি ক্যালেন্ডার ও হিজরি তারিখ প্রচলিত পাটিগাণিতিক (tabular) ইসলামি ক্যালেন্ডার অনুযায়ী গণনা করা — স্থানীয় চাঁদ দেখা/মসজিদের ঘোষণার সাথে ১ দিন পর্যন্ত পার্থক্য হতে পারে, যা যেকোনো হিসাবভিত্তিক হিজরি ক্যালেন্ডারের স্বাভাবিক সীমাবদ্ধতা।</div>
+    </div>
+  </div>
+</div>
+
+<script>
+const DIVISIONS = [
+  {key:'dhaka', name:'ঢাকা', lat:23.8103, lng:90.4125},
+  {key:'chattogram', name:'চট্টগ্রাম', lat:22.3569, lng:91.7832},
+  {key:'rajshahi', name:'রাজশাহী', lat:24.3745, lng:88.6042},
+  {key:'khulna', name:'খুলনা', lat:22.8456, lng:89.5403},
+  {key:'barishal', name:'বরিশাল', lat:22.7010, lng:90.3535},
+  {key:'sylhet', name:'সিলেট', lat:24.8949, lng:91.8687},
+  {key:'rangpur', name:'রংপুর', lat:25.7439, lng:89.2752},
+  {key:'mymensingh', name:'ময়মনসিংহ', lat:24.7471, lng:90.4203},
+];
+const TIMEZONE = 6; // Bangladesh Standard Time, UTC+6
+
+const BN_DIGIT = {'0':'০','1':'১','2':'২','3':'৩','4':'৪','5':'৫','6':'৬','7':'৭','8':'৮','9':'৯'};
+function bn(s){ return String(s).replace(/[0-9]/g, d=>BN_DIGIT[d]); }
+
+const BN_MONTHS = ["বৈশাখ","জ্যৈষ্ঠ","আষাঢ়","শ্রাবণ","ভাদ্র","আশ্বিন","কার্তিক","অগ্রহায়ণ","পৌষ","মাঘ","ফাল্গুন","চৈত্র"];
+const BN_DOW = ["রবি","সোম","মঙ্গল","বুধ","বৃহঃ","শুক্র","শনি"];
+const EN_MONTHS = ["January","February","March","April","May","June","July","August","September","October","November","December"];
+const HI_MONTHS_BN = ["মহররম","সফর","রবিউল আউয়াল","রবিউস সানি","জমাদিউল আউয়াল","জমাদিউস সানি","রজব","শাবান","রমজান","শাওয়াল","জিলক্বদ","জিলহজ্জ"];
+const HI_MONTHS_EN = ["Muharram","Safar","Rabi' I","Rabi' II","Jumada I","Jumada II","Rajab","Sha'ban","Ramadan","Shawwal","Dhu al-Qi'dah","Dhu al-Hijjah"];
+
+// ================= Offline astronomical prayer-time calculation =================
+// (standard solar-position method used by most prayer-time apps worldwide)
+const DtoR = Math.PI/180, RtoD = 180/Math.PI;
+const dsin = d => Math.sin(d*DtoR);
+const dcos = d => Math.cos(d*DtoR);
+const dtan = d => Math.tan(d*DtoR);
+const darcsin = x => RtoD*Math.asin(x);
+const darccos = x => RtoD*Math.acos(Math.max(-1,Math.min(1,x)));
+const darctan2 = (y,x) => RtoD*Math.atan2(y,x);
+const darccot = x => RtoD*Math.atan2(1,x);
+const fixAngle = a => { a = a - 360*Math.floor(a/360); return a<0?a+360:a; };
+const fixHour = a => { a = a - 24*Math.floor(a/24); return a<0?a+24:a; };
+
+function julianDate(year, month, day){
+  if(month<=2){ year -=1; month+=12; }
+  const A = Math.floor(year/100);
+  const B = 2 - A + Math.floor(A/4);
+  return Math.floor(365.25*(year+4716)) + Math.floor(30.6001*(month+1)) + day + B - 1524.5;
+}
+function sunPosition(jd){
+  const D = jd - 2451545.0;
+  const g = fixAngle(357.529 + 0.98560028*D);
+  const q = fixAngle(280.459 + 0.98564736*D);
+  const L = fixAngle(q + 1.915*dsin(g) + 0.020*dsin(2*g));
+  const e = 23.439 - 0.00000036*D;
+  const RA = darctan2(dcos(e)*dsin(L), dcos(L))/15;
+  const eqt = q/15 - fixHour(RA);
+  const decl = darcsin(dsin(e)*dsin(L));
+  return {decl, eqt};
+}
+function computePrayerTimes(year, month, day, lat, lng, tz){
+  const FAJR_ANGLE = 18, ISHA_ANGLE = 18, ASR_FACTOR = 2; // Hanafi Asr (standard in Bangladesh)
+  const jd = julianDate(year, month, day) - lng/(15*24);
+  function sunPos(t){ return sunPosition(jd + t); }
+  function midDayAt(t){ return fixHour(12 - sunPos(t).eqt); }
+  function angleTime(angle, t, after){
+    const decl = sunPos(t).decl;
+    const noon = midDayAt(t);
+    const val = (-dsin(angle) - dsin(decl)*dsin(lat)) / (dcos(decl)*dcos(lat));
+    const T = darccos(val)/15;
+    return noon + (after ? T : -T);
+  }
+  function asrAt(factor, t){
+    const decl = sunPos(t).decl;
+    const angle = -darccot(factor + dtan(Math.abs(lat-decl)));
+    return angleTime(angle, t, true);
+  }
+  const dhuhr = midDayAt(0.5);
+  const sunrise = angleTime(0.833, 0.25, false);
+  const sunset = angleTime(0.833, 0.75, true);
+  const fajr = angleTime(FAJR_ANGLE, 0.2, false);
+  const isha = angleTime(ISHA_ANGLE, 0.8, true);
+  const asr = asrAt(ASR_FACTOR, 0.6);
+  const adjust = t => fixHour(t + tz - lng/15);
+  return { fajr: adjust(fajr), sunrise: adjust(sunrise), dhuhr: adjust(dhuhr), asr: adjust(asr), sunset: adjust(sunset), isha: adjust(isha) };
+}
+
+// ================= Offline Hijri (tabular Islamic calendar) =================
+function gregorianToJulianDay(y,m,d){
+  const a = Math.floor((14-m)/12);
+  const y2 = y + 4800 - a;
+  const m2 = m + 12*a - 3;
+  return d + Math.floor((153*m2+2)/5) + 365*y2 + Math.floor(y2/4) - Math.floor(y2/100) + Math.floor(y2/400) - 32045;
+}
+function julianDayToIslamic(jdIn){
+  const jd = Math.floor(jdIn) + 0.5;
+  const islamicEpoch = 1948439.5;
+  let l = jd - islamicEpoch + 10632;
+  let n = Math.floor((l-1)/10631);
+  l = l - 10631*n + 354;
+  let j = (Math.floor((10985-l)/5316))*(Math.floor((50*l)/17719)) + (Math.floor(l/5670))*(Math.floor((43*l)/15238));
+  l = l - (Math.floor((30-j)/15))*(Math.floor((17719*j)/50)) - (Math.floor(j/16))*(Math.floor((15238*j)/43)) + 29;
+  const month = Math.floor((24*l)/709);
+  const day = l - Math.floor((709*month)/24);
+  const year = 30*n + j - 30;
+  return { year, month, day }; // month: 1-12
+}
+function toHijri(gDate){
+  return julianDayToIslamic(gregorianToJulianDay(gDate.getFullYear(), gDate.getMonth()+1, gDate.getDate()));
+}
+
+// ================= Offline reformed Bangla calendar =================
+function toBanglaDate(gDate){
+  const y = gDate.getFullYear();
+  const poholaThisYear = new Date(y,3,14);
+  let refDate, banglaYear;
+  if(gDate >= poholaThisYear){ refDate = poholaThisYear; banglaYear = y - 593; }
+  else { refDate = new Date(y-1,3,14); banglaYear = y - 1 - 593; }
+  const dayDiff = Math.round((gDate - refDate)/86400000);
+  const leapCheckYear = refDate.getFullYear() + 1;
+  const isLeap = (leapCheckYear%4===0 && (leapCheckYear%100!==0 || leapCheckYear%400===0));
+  const lens = [31,31,31,31,31,30,30,30,30,30, isLeap?31:30, 30];
+  let rem = dayDiff, mi = 0;
+  while(mi<11 && rem >= lens[mi]){ rem -= lens[mi]; mi++; }
+  return { day: rem+1, month: BN_MONTHS[mi], year: banglaYear };
+}
+
+// ================= time formatting =================
+function hourToStr(hDecimal){
+  let h = Math.floor(hDecimal);
+  let m = Math.round((hDecimal-h)*60);
+  if(m===60){ m=0; h=(h+1)%24; }
+  const period = h<3 ? 'রাত' : h<6 ? 'ভোর' : h<12 ? 'সকাল' : h<15 ? 'দুপুর' : h<18 ? 'বিকাল' : h<20 ? 'সন্ধ্যা' : 'রাত';
+  let h12 = h % 12; if(h12===0) h12 = 12;
+  return `${bn(h12)}:${bn(String(m).padStart(2,'0'))} ${period}`;
+}
+
+// ================= state =================
+let currentDivision = null;
+let currentYear, currentMonth; // 1-12
+let selectedDay = null;
+
+function renderDivisions(){
+  const grid = document.getElementById('divGrid');
+  grid.innerHTML = '';
+  DIVISIONS.forEach(d=>{
+    const btn = document.createElement('div');
+    btn.className = 'divbtn' + (currentDivision && currentDivision.key===d.key ? ' active':'');
+    btn.textContent = d.name;
+    btn.onclick = ()=> selectDivision(d.key);
+    grid.appendChild(btn);
+  });
+}
+
+function selectDivision(key){
+  const div = DIVISIONS.find(d=>d.key===key);
+  if(!div) return;
+  currentDivision = div;
+  localStorage.setItem('bd_cal_selected_division', key);
+  document.getElementById('divStatus').textContent = `নির্বাচিত: ${div.name}`;
+  renderDivisions();
+  document.getElementById('appBody').classList.remove('hidden');
+  const now = new Date();
+  if(now.getFullYear()===currentYear && (now.getMonth()+1)===currentMonth){
+    selectedDay = now.getDate();
+  } else {
+    selectedDay = 1;
+  }
+  renderCalendar();
+  renderPrayerCard();
+}
+
+function renderPrayerCard(){
+  const gDateObj = new Date(currentYear, currentMonth-1, selectedDay);
+  const isFriday = gDateObj.getDay() === 5;
+  const t = computePrayerTimes(currentYear, currentMonth, selectedDay, currentDivision.lat, currentDivision.lng, TIMEZONE);
+
+  // next day's Fajr, for Isha window end and Tahajjud window end
+  const nextDate = new Date(currentYear, currentMonth-1, selectedDay+1);
+  const tNext = computePrayerTimes(nextDate.getFullYear(), nextDate.getMonth()+1, nextDate.getDate(), currentDivision.lat, currentDivision.lng, TIMEZONE);
+
+  // last third of the night: from maghrib to next fajr, tahajjud = last 1/3 of that span
+  const nightLen = (tNext.fajr + 24 - t.sunset);
+  const lastThird = fixHour(tNext.fajr - nightLen/3);
+
+  const rows = [
+    {name:'তাহাজ্জুদ', start:lastThird, end:tNext.fajr, cls:'tahajjud'},
+    {name:'ফজর', start:t.fajr, end:t.sunrise},
+    {name: isFriday ? 'জুমা' : 'যোহর', start:t.dhuhr, end:t.asr},
+    {name:'আসর', start:t.asr, end:t.sunset},
+    {name:'মাগরিব', start:t.sunset, end:t.isha},
+    {name:'এশা', start:t.isha, end:tNext.fajr},
+  ];
+  const el = document.getElementById('prayerTiles');
+  el.innerHTML = rows.map(r=>`
+    <div class="ptile ${r.cls||''}">
+      <div class="pname">${r.name}</div>
+      <div class="prange">${hourToStr(r.start)}
+        <small>থেকে ${hourToStr(r.end)}</small>
+      </div>
+    </div>
+  `).join('');
+
+  const bd = toBanglaDate(gDateObj);
+  const hd = toHijri(gDateObj);
+  const weekdaysEn = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+  document.getElementById('selDateG').textContent = `${weekdaysEn[gDateObj.getDay()]}, ${selectedDay} ${EN_MONTHS[currentMonth-1]} ${currentYear}`;
+  document.getElementById('selDateB').textContent = `বাংলা: ${bn(bd.day)} ${bd.month} ${bn(bd.year)}`;
+  document.getElementById('selDateH').textContent = `হিজরি: ${bn(hd.day)} ${HI_MONTHS_BN[hd.month-1]} (${HI_MONTHS_EN[hd.month-1]}) ${bn(hd.year)}`;
+}
+
+function renderCalendar(){
+  document.getElementById('calTitle').textContent = `${EN_MONTHS[currentMonth-1]} ${currentYear} — ${currentDivision.name}`;
+  const dowRow = document.getElementById('dowRow');
+  dowRow.innerHTML = BN_DOW.map((d,i)=>`<div class="dow ${i===5?'fri':''}">${d}</div>`).join('');
+
+  const grid = document.getElementById('calGrid');
+  grid.innerHTML = '';
+  const firstDay = new Date(currentYear, currentMonth-1, 1);
+  const startDow = firstDay.getDay();
+  const daysInMonth = new Date(currentYear, currentMonth, 0).getDate();
+
+  for(let i=0;i<startDow;i++){
+    const c = document.createElement('div'); c.className='cell empty'; grid.appendChild(c);
+  }
+  const now = new Date();
+  const isCurrentMonth = now.getFullYear()===currentYear && (now.getMonth()+1)===currentMonth;
+
+  for(let day=1; day<=daysInMonth; day++){
+    const dow = new Date(currentYear, currentMonth-1, day).getDay();
+    const gDateObj = new Date(currentYear, currentMonth-1, day);
+    const bd = toBanglaDate(gDateObj);
+    const hd = toHijri(gDateObj);
+
+    const c = document.createElement('div');
+    c.className = 'cell' + (dow===5?' fri':'') + (day===selectedDay?' selected':'') + (isCurrentMonth && day===now.getDate() ? ' today':'');
+    c.innerHTML = `
+      <div class="g">${day}</div>
+      <div class="b">${bn(bd.day)} ${bd.month.slice(0,3)}</div>
+      <div class="h">${bn(hd.day)} ${HI_MONTHS_EN[hd.month-1].slice(0,3)}</div>
+    `;
+    c.onclick = ()=>{ selectedDay = day; renderCalendar(); renderPrayerCard(); };
+    grid.appendChild(c);
+  }
+}
+
+document.getElementById('prevMonth').onclick = ()=>{
+  currentMonth--; if(currentMonth<1){ currentMonth=12; currentYear--; }
+  if(selectedDay > new Date(currentYear,currentMonth,0).getDate()) selectedDay = new Date(currentYear,currentMonth,0).getDate();
+  renderCalendar(); renderPrayerCard();
+};
+document.getElementById('nextMonth').onclick = ()=>{
+  currentMonth++; if(currentMonth>12){ currentMonth=1; currentYear++; }
+  if(selectedDay > new Date(currentYear,currentMonth,0).getDate()) selectedDay = new Date(currentYear,currentMonth,0).getDate();
+  renderCalendar(); renderPrayerCard();
+};
+
+// ---- init ----
+(function init(){
+  const now = new Date();
+  currentYear = now.getFullYear();
+  currentMonth = now.getMonth()+1;
+  renderDivisions();
+  const savedKey = localStorage.getItem('bd_cal_selected_division');
+  if(savedKey && DIVISIONS.find(d=>d.key===savedKey)){
+    selectDivision(savedKey);
+  }
+})();
+</script>
+</body>
+</html>
