@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>টুল পোর্টাল</title>
+<style>
+:root{--bg:#f3f5f1;--panel:#fff;--ink:#1b2a22;--mute:#5f6f66;--line:#d9dfd8;--accent:#0f766e;--accent-ink:#fff;--hover:#e6efe9}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){--bg:#101613;--panel:#18211c;--ink:#e8efe9;--mute:#98a89f;--line:#2b3830;--accent:#2dd4bf;--accent-ink:#06211d;--hover:#213028}}
+:root[data-theme=dark]{--bg:#101613;--panel:#18211c;--ink:#e8efe9;--mute:#98a89f;--line:#2b3830;--accent:#2dd4bf;--accent-ink:#06211d;--hover:#213028}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--ink);font-family:"Noto Sans Bengali","Hind Siliguri",system-ui,sans-serif;display:flex}
+aside{width:260px;background:var(--panel);border-right:1px solid var(--line);display:flex;flex-direction:column;flex-shrink:0}
+.brand{padding:18px 16px;font-size:1.15rem;font-weight:700;border-bottom:1px solid var(--line);cursor:pointer}
+nav{overflow-y:auto;padding:8px;flex:1}
+nav button{display:flex;gap:10px;align-items:center;width:100%;text-align:left;background:none;border:0;color:var(--ink);font:inherit;padding:10px 12px;border-radius:8px;cursor:pointer}
+nav button:hover{background:var(--hover)}
+nav button.on{background:var(--accent);color:var(--accent-ink)}
+nav button:focus-visible,.card:focus-visible,.bar button:focus-visible,.bar a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+main{flex:1;display:flex;flex-direction:column;min-width:0}
+.bar{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--line)}
+.bar h1{font-size:1rem;margin:0;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar button,.bar a{background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:7px 12px;font:inherit;font-size:.9rem;text-decoration:none;cursor:pointer}
+#menu{display:none}
+iframe{flex:1;width:100%;border:0;background:#fff;display:none}
+#home{flex:1;overflow-y:auto;padding:22px}
+#home p{color:var(--mute);margin:.2rem 0 1.2rem}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:14px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;text-align:left;font:inherit;color:var(--ink);cursor:pointer;display:flex;flex-direction:column;gap:8px}
+.card:hover{border-color:var(--accent)}
+.card .ic{font-size:1.8rem}
+.card small{color:var(--mute)}
+.search{padding:10px 14px;background:var(--panel);border-bottom:1px solid var(--line)}
+.search input,dialog input{width:100%;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:9px 12px}
+.search input:focus,dialog input:focus{outline:2px solid var(--accent);border-color:transparent}
+.add{margin:8px;padding:10px;border-radius:8px;border:1px dashed var(--accent);background:none;color:var(--accent);font:inherit;cursor:pointer}
+.row{display:flex;align-items:center}
+.row>button:first-child{flex:1}
+.wrap{position:relative}
+.wrap .card{width:100%;height:100%}
+.del{background:none;border:0;color:var(--mute);cursor:pointer;font-size:1rem;padding:6px 8px;border-radius:6px}
+.del:hover{color:#dc2626;background:var(--hover)}
+.wrap .del{position:absolute;top:8px;right:8px}
+.empty{color:var(--mute);padding:14px}
+dialog{background:var(--panel);color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:20px;width:min(420px,92vw)}
+dialog::backdrop{background:rgba(0,0,0,.45)}
+dialog label{display:block;margin:10px 0 4px;font-size:.9rem;color:var(--mute)}
+.acts{display:flex;gap:8px;justify-content:flex-end;margin-top:16px}
+.acts button{padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);font:inherit;cursor:pointer}
+.acts .ok{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+@media (max-width:760px){
+#menu{display:block}
+aside{position:fixed;inset:0 auto 0 0;z-index:5;transform:translateX(-100%);transition:transform .2s;box-shadow:0 0 30px rgba(0,0,0,.3)}
+aside.open{transform:none}
+}
+@media (prefers-reduced-motion:reduce){aside{transition:none}}
+</style>
+</head>
+<body>
+<aside id="side">
+  <div class="brand" id="brand">🧰 টুল পোর্টাল</div>
+  <nav id="nav"></nav>
+  <button class="add" id="addBtn">＋ নতুন টুল যোগ করুন</button>
+  <button class="add" id="bakBtn" style="margin-top:0">💾 ব্যাকআপ (আপডেটেড html ডাউনলোড)</button>
+</aside>
+<main>
+  <div class="bar">
+    <button id="menu" aria-label="মেনু">☰</button>
+    <h1 id="title">হোম</h1>
+    <a id="ext" href="#" target="_blank" rel="noopener" style="display:none">নতুন ট্যাবে খুলুন</a>
+    <button id="delCur" style="display:none">মুছুন</button>
+    <button id="theme" aria-label="থিম বদলান">🌓</button>
+  </div>
+  <div class="search"><input id="q" type="search" placeholder="টুল খুঁজুন..." aria-label="টুল খুঁজুন"></div>
+  <section id="home">
+    <h2 style="margin:0">সব টুল এক জায়গায়</h2>
+    <p>যেকোনো টুলে ক্লিক করলে এখানেই খুলবে।</p>
+    <div class="grid" id="grid"></div>
+  </section>
+  <iframe id="frame" title="পেজ ভিউ" allow="camera; microphone; geolocation; fullscreen; clipboard-write"></iframe>
+</main>
+<dialog id="dlg">
+  <form method="dialog" id="form">
+    <strong>নতুন টুল</strong>
+    <label for="fn">নাম</label><input id="fn" required>
+    <label for="ff">ফাইলের নাম বা পূর্ণ লিংক</label><input id="ff" required placeholder="calculator.html">
+    <label for="fi">আইকন (ইমোজি, ঐচ্ছিক)</label><input id="fi" maxlength="4" placeholder="🧮">
+    <label for="fd">সংক্ষিপ্ত বিবরণ (ঐচ্ছিক)</label><input id="fd">
+    <div class="acts"><button type="button" id="cancel">বাতিল</button><button class="ok" type="submit">যোগ করুন</button></div>
+  </form>
+</dialog>
+<script>
+// নতুন পেজ যোগ করতে এখানে একটি লাইন যোগ করুন
+var SRC="<!DOCTYPE html>\n"+document.documentElement.outerHTML;
+var DEFAULTS=/*DATA*/[
+ {n:"নোটপ্যাড",f:"Notepad.html",i:"📝",d:"দ্রুত নোট লিখুন"},
+ {n:"QR কোড স্ক্যানার",f:"Qr Code Scanner.html",i:"📷",d:"QR স্ক্যান করুন"},
+ {n:"সূর্যের অবস্থান",f:"Sun position.html",i:"☀️",d:"সূর্যের দিক ও উচ্চতা"},
+ {n:"টাইমার",f:"Timer.html",i:"⏱️",d:"সময় গণনা"},
+ {n:"গুগল ম্যাপ",f:"google_maps_api_AIzaSyAOVYRIgupAurZup5y1PRh8Ismb1A3lLao.html",i:"🗺️",d:"ম্যাপ দেখুন"},
+ {n:"ইসলামিক ক্যালেন্ডার",f:"islamic-calendar-bd-offline.html",i:"🌙",d:"অফলাইন হিজরি ক্যালেন্ডার"},
+ {n:"PDF রিডার",f:"pdf-reader-offline.html",i:"📖",d:"অফলাইনে PDF পড়ুন"},
+ {n:"PDF স্প্লিটার",f:"pdf_splitter.html",i:"✂️",d:"PDF ভাগ করুন"},
+ {n:"ফটো কমপ্রেসার",f:"photo-compressor.html",i:"🖼️",d:"ছবির সাইজ কমান"},
+ {n:"ছবি থেকে PDF",f:"photo-to-pdf.html",i:"📄",d:"ছবি PDF বানান"},
+ {n:"ভিডিও কমপ্রেসার",f:"video-compressor.html",i:"🎞️",d:"ভিডিওর সাইজ কমান"},
+ {n:"আবহাওয়া",f:"weather.html",i:"⛅",d:"আবহাওয়ার খবর"}
+]/*END*/;
+var KEY="portal_tools_v1";
+var PAGES;
+try{PAGES=JSON.parse(localStorage.getItem(KEY))}catch(e){PAGES=null}
+if(!Array.isArray(PAGES))PAGES=DEFAULTS.slice();
+function save(){try{localStorage.setItem(KEY,JSON.stringify(PAGES))}catch(e){}}
+var BASE="https://amitomarawal-cmyk.github.io/Html-Pages/";
+var $=function(id){return document.getElementById(id)};
+var nav=$("nav"),grid=$("grid"),frame=$("frame"),home=$("home"),cur=-1;
+function esc(t){var d=document.createElement("div");d.textContent=t||"";return d.innerHTML}
+function urlOf(p){return /^https?:\/\//i.test(p.f)?p.f:BASE+encodeURI(p.f)}
+
+function render(){
+  var q=$("q").value.trim().toLowerCase();
+  nav.innerHTML="";grid.innerHTML="";
+  var n=0;
+  PAGES.forEach(function(p,k){
+    if(q&&(p.n+" "+(p.d||"")+" "+p.f).toLowerCase().indexOf(q)<0)return;
+    n++;
+    var r=document.createElement("div");r.className="row";
+    var b=document.createElement("button");
+    b.innerHTML="<span>"+esc(p.i||"🔗")+"</span><span>"+esc(p.n)+"</span>";
+    if(k===cur)b.classList.add("on");
+    b.onclick=function(){openPage(k)};
+    var x=document.createElement("button");x.className="del";x.textContent="🗑";x.title="মুছুন";x.setAttribute("aria-label",p.n+" মুছুন");
+    x.onclick=function(){removeTool(k)};
+    r.appendChild(b);r.appendChild(x);nav.appendChild(r);
+    var w=document.createElement("div");w.className="wrap";
+    var c=document.createElement("button");c.className="card";
+    c.innerHTML='<span class="ic">'+esc(p.i||"🔗")+"</span><strong>"+esc(p.n)+"</strong><small>"+esc(p.d)+"</small>";
+    c.onclick=function(){openPage(k)};
+    var y=document.createElement("button");y.className="del";y.textContent="🗑";y.title="মুছুন";y.setAttribute("aria-label",p.n+" মুছুন");
+    y.onclick=function(){removeTool(k)};
+    w.appendChild(c);w.appendChild(y);grid.appendChild(w);
+  });
+  if(!n){var e=document.createElement("div");e.className="empty";e.textContent=PAGES.length?"কিছু পাওয়া যায়নি।":"কোনো টুল নেই। নিচের বাটনে নতুন টুল যোগ করুন।";nav.appendChild(e.cloneNode(true));grid.appendChild(e)}
+}
+function openPage(k,skipHash){
+  var p=PAGES[k];if(!p)return;
+  cur=k;
+  home.style.display="none";
+  frame.style.display="block";
+  frame.src=urlOf(p);
+  $("title").textContent=p.n;
+  $("ext").href=urlOf(p);$("ext").style.display="";
+  $("delCur").style.display="";
+  $("side").classList.remove("open");
+  render();
+  if(!skipHash)location.hash=k;
+}
+function goHome(){
+  cur=-1;
+  frame.style.display="none";frame.removeAttribute("src");
+  home.style.display="";
+  $("title").textContent="হোম";
+  $("ext").style.display="none";$("delCur").style.display="none";
+  $("side").classList.remove("open");
+  if(location.hash)history.replaceState(null,"",location.pathname);
+  render();
+}
+function removeTool(k){
+  if(!confirm("\""+PAGES[k].n+"\" টুলটি মুছবেন? (শুধু পোর্টাল থেকে সরবে, GitHub ফাইল থাকবে)"))return;
+  PAGES.splice(k,1);save();goHome();
+}
+$("delCur").onclick=function(){if(cur>=0)removeTool(cur)};
+$("q").oninput=function(){if(cur>=0&&home.style.display==="none"){/* keep viewing */}render()};
+$("addBtn").onclick=function(){$("form").reset();$("dlg").showModal();$("fn").focus()};
+$("cancel").onclick=function(){$("dlg").close()};
+$("form").onsubmit=function(){
+  PAGES.push({n:$("fn").value.trim(),f:$("ff").value.trim(),i:$("fi").value.trim()||"🔗",d:$("fd").value.trim()});
+  save();$("q").value="";render();
+};
+$("bakBtn").onclick=function(){
+  var a=SRC.indexOf("/*DATA*/")+8,b=SRC.indexOf("/*END*/");
+  var data=JSON.stringify(PAGES,null,1).replace(/</g,"\\u003c");
+  var out=SRC.slice(0,a)+data+SRC.slice(b);
+  var blob=new Blob([out],{type:"text/html"});
+  var l=document.createElement("a");l.href=URL.createObjectURL(blob);l.download="index.html";
+  document.body.appendChild(l);l.click();l.remove();
+  setTimeout(function(){URL.revokeObjectURL(l.href)},1000);
+};
+$("brand").onclick=goHome;
+$("menu").onclick=function(){$("side").classList.toggle("open")};
+$("theme").onclick=function(){
+  var r=document.documentElement,dark=r.dataset.theme?r.dataset.theme==="dark":matchMedia("(prefers-color-scheme:dark)").matches;
+  r.dataset.theme=dark?"light":"dark";
+};
+function route(){
+  var k=parseInt(location.hash.slice(1),10);
+  if(PAGES[k])openPage(k,true);else goHome();
+}
+addEventListener("hashchange",route);
+route();
+</script>
+</body>
+</html>
