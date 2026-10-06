@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>P2P চ্যাট</title>
+<script src="https://cdn.jsdelivr.net/npm/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<style>
+:root{--bg:#f6f7f4;--pn:#fff;--tx:#1d2420;--mu:#6b756e;--ac:#0f766e;--ln:#dfe3dd;--me:#d6f0ea;--rd:#c2410c}
+@media(prefers-color-scheme:dark){:root{--bg:#121614;--pn:#1a201d;--tx:#e6ebe7;--mu:#8b968f;--ac:#2dd4bf;--ln:#2a322e;--me:#12403a;--rd:#fb923c}}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{font:15px/1.5 system-ui,"Noto Sans Bengali",sans-serif;background:var(--bg);color:var(--tx)}
+button{font:inherit;cursor:pointer;border:1px solid var(--ln);background:var(--pn);color:var(--tx);border-radius:8px;padding:6px 12px}
+button.p{background:var(--ac);color:#fff;border-color:var(--ac)}
+button.d{color:var(--rd)}
+input[type=text]{font:inherit;border:1px solid var(--ln);background:var(--pn);color:var(--tx);border-radius:8px;padding:8px 10px;min-width:0}
+button:focus-visible,input:focus-visible{outline:2px solid var(--ac);outline-offset:1px}
+#login{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:20px}
+#login h1{margin:0;font-size:28px}
+#app{display:none;height:100%}
+#side{width:300px;background:var(--pn);border-right:1px solid var(--ln);display:flex;flex-direction:column}
+#side header,#chat header{padding:12px;border-bottom:1px solid var(--ln);display:flex;gap:8px;align-items:center}
+#side header b{flex:1}
+#add{display:flex;gap:6px;padding:10px;border-bottom:1px solid var(--ln)}
+#add input{flex:1}
+#list{flex:1;overflow:auto}
+.ct{padding:10px 12px;border-bottom:1px solid var(--ln);display:flex;align-items:center;gap:8px;cursor:pointer}
+.ct.on{background:var(--me)}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--ln)}
+.dot.o{background:#16a34a}
+.ct span{flex:1;overflow:hidden;text-overflow:ellipsis}
+.x{padding:0 8px;line-height:1.4}
+.bd{background:var(--rd);color:#fff;border-radius:10px;padding:0 7px;font-size:12px}
+#chat{flex:1;display:flex;flex-direction:column;min-width:0}
+#chat header b{flex:1}
+#msgs{flex:1;overflow:auto;padding:14px;display:flex;flex-direction:column;gap:6px}
+.m{max-width:75%;padding:7px 11px;border-radius:12px;background:var(--pn);border:1px solid var(--ln);word-break:break-word;align-self:flex-start}
+.m.me{background:var(--me);align-self:flex-end}
+.m small{display:block;color:var(--mu);font-size:11px}
+.m img{max-width:100%;border-radius:8px;display:block;margin-bottom:4px}
+#bar{display:flex;gap:6px;padding:10px;border-top:1px solid var(--ln);background:var(--pn)}
+#bar input[type=text]{flex:1}
+#empty{margin:auto;color:var(--mu)}
+#back{display:none}
+.ov{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:9;padding:16px}
+.ov.on{display:flex}
+.box{background:var(--pn);padding:20px;border-radius:12px;text-align:center;display:flex;flex-direction:column;gap:12px;max-width:100%}
+#call{background:#000;flex-direction:column;gap:10px}
+#rv{max-width:100%;max-height:75vh;background:#111;border-radius:10px}
+#lv{position:absolute;right:20px;top:20px;width:120px;border-radius:8px;background:#222}
+#toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--tx);color:var(--bg);padding:8px 16px;border-radius:20px;display:none;z-index:20}
+@media(max-width:700px){#side{width:100%}#chat{display:none}body.ch #side{display:none}body.ch #chat{display:flex}#back{display:inline-block}}
+</style>
+</head>
+<body>
+<div id="login">
+  <h1>P2P চ্যাট</h1>
+  <p style="color:var(--mu);margin:0">আপনার username লিখুন (ইংরেজি অক্ষর, সংখ্যা, - বা _)</p>
+  <input id="un" type="text" placeholder="username" maxlength="30" autocomplete="off">
+  <button class="p" id="go">শুরু করুন</button>
+</div>
+
+<div id="app">
+  <aside id="side">
+    <header><b id="meName"></b><button id="out">লগআউট</button></header>
+    <div id="add"><input id="nu" type="text" placeholder="username লিখে চ্যাট শুরু" autocomplete="off"><button class="p" id="open">খুলুন</button></div>
+    <div id="list"></div>
+  </aside>
+  <main id="chat">
+    <header>
+      <button id="back">←</button><b id="title"></b>
+      <button id="ac">অডিও কল</button><button id="vc">ভিডিও কল</button><button class="d" id="del">চ্যাট মুছুন</button>
+    </header>
+    <div id="msgs"><div id="empty">একজন username বেছে নিন</div></div>
+    <div id="bar">
+      <button id="fb">ফাইল</button><input type="file" id="fi" multiple hidden>
+      <input id="tx" type="text" placeholder="মেসেজ লিখুন" autocomplete="off"><button class="p" id="snd">পাঠান</button>
+    </div>
+  </main>
+</div>
+
+<div class="ov" id="inc"><div class="box"><div id="incT"></div><div><button class="p" id="yes">ধরুন</button> <button class="d" id="no">কেটে দিন</button></div></div></div>
+<div class="ov" id="call"><video id="rv" autoplay playsinline></video><video id="lv" autoplay playsinline muted></video><button class="d" id="end">কল শেষ</button></div>
+<div id="toast"></div>
+
+<script>
+const $=s=>document.querySelector(s);
+let db,me,peer,conns={},active=null,unread={},cur=null,pend=null;
+
+/* ---------- storage (IndexedDB) ---------- */
+function openDB(){return new Promise((ok,no)=>{
+  const r=indexedDB.open('p2pchat',1);
+  r.onupgradeneeded=()=>{const d=r.result;
+    d.createObjectStore('msgs',{keyPath:'id',autoIncrement:true}).createIndex('user','user');
+    d.createObjectStore('files',{keyPath:'id'});};
+  r.onsuccess=()=>ok(r.result);r.onerror=no;});}
+const P=r=>new Promise((ok,no)=>{r.onsuccess=()=>ok(r.result);r.onerror=()=>no(r.error)});
+const st=(n,m='readonly')=>db.transaction(n,m).objectStore(n);
+const getMsgs=u=>P(st('msgs').index('user').getAll(u));
+const addMsg=m=>P(st('msgs','readwrite').add(m));
+const putFile=(id,blob)=>P(st('files','readwrite').put({id,blob}));
+const getFile=id=>P(st('files').get(id));
+async function delChat(u){
+  const ms=await getMsgs(u);
+  for(const m of ms){await P(st('msgs','readwrite').delete(m.id)); if(m.fid)await P(st('files','readwrite').delete(m.fid));}
+}
+const contacts=()=>JSON.parse(localStorage.getItem('ct_'+me)||'[]');
+function addContact(u){const c=contacts();if(!c.includes(u)){c.push(u);localStorage.setItem('ct_'+me,JSON.stringify(c));}renderList();}
+
+/* ---------- helpers ---------- */
+function toast(t){const e=$('#toast');e.textContent=t;e.style.display='block';clearTimeout(e._t);e._t=setTimeout(()=>e.style.display='none',3000);}
+function notify(title,body,u){
+  if(!('Notification' in window)||Notification.permission!=='granted')return;
+  const n=new Notification(title,{body});
+  n.onclick=()=>{window.focus();if(u)openChat(u);n.close();};
+}
+const size=b=>b>1048576?(b/1048576).toFixed(1)+' MB':Math.ceil(b/1024)+' KB';
+const clean=s=>s.trim().replace(/[^A-Za-z0-9_-]/g,'').toLowerCase();
+
+/* ---------- login / peer ---------- */
+let tries=0;
+window.addEventListener('pagehide',()=>{try{peer&&peer.destroy();}catch{}});
+function start(name){
+  me=name;
+  peer=new Peer('cu-'+me,{config:{iceServers:[
+    {urls:'stun:stun.l.google.com:19302'},
+    {urls:['turn:openrelay.metered.ca:80','turn:openrelay.metered.ca:443','turn:openrelay.metered.ca:443?transport=tcp'],username:'openrelayproject',credential:'openrelayproject'}]}});
+  peer.on('disconnected',()=>{try{peer.reconnect();}catch{}});
+  peer.on('open',()=>{
+    tries=0;
+    if(navigator.storage&&navigator.storage.persist)navigator.storage.persist();
+    localStorage.setItem('me',me);
+    $('#login').style.display='none';$('#app').style.display='flex';
+    $('#meName').textContent='@'+me;renderList();
+    if('Notification' in window&&Notification.permission==='default')Notification.requestPermission();
+  });
+  peer.on('error',e=>{
+    if(e.type==='unavailable-id'){
+      if(++tries<=6){$('#login').style.display='flex';$('#un').value=me;toast('সংযোগ হচ্ছে… ('+tries+')');
+        try{peer.destroy();}catch{}setTimeout(()=>start(me),3000);}
+      else{try{peer.destroy();}catch{}$('#login').style.display='flex';$('#un').value=me;tries=0;
+        alert('@'+me+' এখন অন্য কেউ ব্যবহার করছে। অন্য username দিন, অথবা অন্য ট্যাব বন্ধ করে আবার চেষ্টা করুন। আপনার সেভ করা চ্যাট মোছা হয়নি।');}
+    }
+    else if(e.type==='peer-unavailable')toast('ব্যবহারকারী এখন অনলাইনে নেই');
+    else if(e.type==='network'||e.type==='server-error'||e.type==='socket-error')toast('ইন্টারনেট সংযোগ সমস্যা');
+  });
+  peer.on('connection',setup);
+  peer.on('call',incoming);
+}
+function logout(){localStorage.removeItem('me');location.reload();}
+$('#go').onclick=()=>{const n=clean($('#un').value);if(!n)return toast('সঠিক username লিখুন');start(n);};
+$('#un').onkeydown=e=>{if(e.key==='Enter')$('#go').click();};
+$('#out').onclick=logout;
+
+/* ---------- data connections ---------- */
+function setup(c){
+  const u=c.peer.slice(3);
+  const reg=()=>{conns[u]=c;renderList();if(active===u)head();};
+  c.on('open',reg);if(c.open)reg();
+  c.on('data',d=>onData(u,d));
+  c.on('close',()=>{if(conns[u]===c)delete conns[u];renderList();if(active===u)head();});
+  c.on('error',()=>{});
+}
+function ensure(u){return new Promise((ok,no)=>{
+  const c=conns[u];if(c&&c.open)return ok(c);
+  const n=peer.connect('cu-'+u,{reliable:true});setup(n);
+  const t=setTimeout(()=>no(),6000);
+  n.on('open',()=>{clearTimeout(t);ok(n);});
+});}
+async function onData(u,d){
+  addContact(u);
+  let m;
+  if(d.t==='text')m={user:u,me:0,t:'text',text:d.text,ts:Date.now()};
+  else if(d.t==='file'){
+    const fid=crypto.randomUUID();
+    await putFile(fid,new Blob([d.data],{type:d.type}));
+    m={user:u,me:0,t:'file',fid,name:d.name,type:d.type,size:d.data.byteLength,ts:Date.now()};
+  }else return;
+  await addMsg(m);
+  if(active===u&&!document.hidden)renderMsgs();
+  else{unread[u]=(unread[u]||0)+1;renderList();notify('@'+u,m.t==='text'?m.text:'ফাইল পাঠিয়েছে: '+m.name,u);}
+}
+
+/* ---------- UI ---------- */
+async function renderList(){
+  const l=$('#list');l.innerHTML='';
+  const all=[...new Set([...contacts(),...Object.keys(conns)])];
+  all.forEach(u=>{
+    const d=document.createElement('div');d.className='ct'+(u===active?' on':'');
+    d.innerHTML='<i class="dot'+(conns[u]&&conns[u].open?' o':'')+'"></i><span></span>'+(unread[u]?'<em class="bd">'+unread[u]+'</em>':'')+'<button class="d x" title="মুছুন">×</button>';
+    d.querySelector('span').textContent='@'+u;
+    d.onclick=()=>openChat(u);
+    d.querySelector('.x').onclick=async e=>{e.stopPropagation();
+      if(!confirm('@'+u+' কে তালিকা ও চ্যাটসহ মুছে ফেলবেন?'))return;
+      await delChat(u);
+      localStorage.setItem('ct_'+me,JSON.stringify(contacts().filter(x=>x!==u)));
+      if(conns[u]){try{conns[u].close();}catch{}delete conns[u];}
+      if(active===u){active=null;$('#msgs').innerHTML='<div id="empty">একজন username বেছে নিন</div>';$('#title').textContent='';document.body.classList.remove('ch');}
+      renderList();};
+    l.appendChild(d);
+  });
+  if(!all.length)l.innerHTML='<p style="padding:14px;color:var(--mu)">ওপরের ঘরে কারও username লিখে চ্যাট শুরু করুন।</p>';
+}
+function head(){$('#title').textContent='@'+active+(conns[active]&&conns[active].open?' • অনলাইন':'');}
+function openChat(u){
+  active=u;unread[u]=0;addContact(u);document.body.classList.add('ch');
+  head();renderMsgs();renderList();
+  ensure(u).then(()=>{head();renderList();}).catch(()=>{});
+}
+let rtok=0;
+const toBottom=()=>{const b=$('#msgs');b.scrollTop=b.scrollHeight;};
+async function renderMsgs(){
+  const tk=++rtok,u=active;
+  if(!u)return;
+  const ms=(await getMsgs(u)).sort((x,y)=>x.id-y.id);
+  const frag=document.createDocumentFragment();
+  if(!ms.length){const e=document.createElement('div');e.id='empty';e.textContent='এখনও কোনো মেসেজ নেই';frag.appendChild(e);}
+  for(const m of ms){
+    const d=document.createElement('div');d.className='m'+(m.me?' me':'');
+    if(m.t==='text')d.appendChild(document.createTextNode(m.text));
+    else{
+      if(m.type&&m.type.startsWith('image/')){
+        const f=await getFile(m.fid);
+        if(f){const i=document.createElement('img');i.onload=toBottom;i.src=URL.createObjectURL(f.blob);d.appendChild(i);}
+      }
+      const b=document.createElement('button');b.textContent='⬇ '+m.name+' ('+size(m.size)+')';
+      b.onclick=async()=>{const f=await getFile(m.fid);if(!f)return toast('ফাইল পাওয়া যায়নি');
+        const a=document.createElement('a');a.href=URL.createObjectURL(f.blob);a.download=m.name;a.click();};
+      d.appendChild(b);
+    }
+    const s=document.createElement('small');s.textContent=new Date(m.ts).toLocaleString('bn-BD');d.appendChild(s);
+    frag.appendChild(d);
+  }
+  if(tk!==rtok||u!==active)return;
+  $('#msgs').replaceChildren(frag);
+  toBottom();
+}
+$('#open').onclick=()=>{const u=clean($('#nu').value);if(!u)return;if(u===me)return toast('নিজের username নয়');$('#nu').value='';openChat(u);};
+$('#nu').onkeydown=e=>{if(e.key==='Enter')$('#open').click();};
+$('#back').onclick=()=>{document.body.classList.remove('ch');active=null;renderList();};
+
+async function sendText(){
+  const text=$('#tx').value.trim();if(!text||!active)return;
+  try{const c=await ensure(active);c.send({t:'text',text});
+    await addMsg({user:active,me:1,t:'text',text,ts:Date.now()});$('#tx').value='';renderMsgs();}
+  catch{toast('ব্যবহারকারী অনলাইনে নেই, পাঠানো যায়নি');}
+}
+$('#snd').onclick=sendText;
+$('#tx').onkeydown=e=>{if(e.key==='Enter')sendText();};
+$('#fb').onclick=()=>$('#fi').click();
+$('#fi').onchange=async e=>{
+  if(!active)return;
+  for(const f of e.target.files){
+    try{
+      const c=await ensure(active);
+      c.send({t:'file',name:f.name,type:f.type,data:await f.arrayBuffer()});
+      const fid=crypto.randomUUID();await putFile(fid,f);
+      await addMsg({user:active,me:1,t:'file',fid,name:f.name,type:f.type,size:f.size,ts:Date.now()});
+      renderMsgs();
+    }catch{toast('ফাইল পাঠানো যায়নি: '+f.name);}
+  }
+  e.target.value='';
+};
+$('#del').onclick=async()=>{
+  if(!active||!confirm('@'+active+' এর পুরো চ্যাট মুছে ফেলবেন?'))return;
+  await delChat(active);renderMsgs();
+};
+
+/* ---------- calls ---------- */
+async function media(kind){return navigator.mediaDevices.getUserMedia({audio:true,video:kind==='video'});}
+function attach(c,stream,kind){
+  cur={c,stream};
+  $('#lv').srcObject=stream;$('#lv').style.display=kind==='video'?'block':'none';
+  $('#call').classList.add('on');
+  c.on('stream',r=>{$('#rv').srcObject=r;});
+  c.on('close',endCall);
+}
+function endCall(){
+  if(!cur)return;
+  cur.stream.getTracks().forEach(t=>t.stop());
+  try{cur.c.close();}catch{}
+  cur=null;$('#call').classList.remove('on');$('#rv').srcObject=null;
+}
+async function dial(kind){
+  if(!active)return;
+  try{
+    await ensure(active);
+    const s=await media(kind);
+    attach(peer.call('cu-'+active,s,{metadata:{kind}}),s,kind);
+  }catch{toast('কল করা যায়নি (অনলাইন ও মাইক/ক্যামেরার অনুমতি দেখুন)');}
+}
+$('#ac').onclick=()=>dial('audio');
+$('#vc').onclick=()=>dial('video');
+$('#end').onclick=endCall;
+function incoming(c){
+  const u=c.peer.slice(3),kind=(c.metadata&&c.metadata.kind)||'audio';
+  if(cur){c.close();return;}
+  pend=c;addContact(u);
+  $('#incT').textContent='@'+u+' '+(kind==='video'?'ভিডিও':'অডিও')+' কল করছে';
+  $('#inc').classList.add('on');
+  notify('@'+u,(kind==='video'?'ভিডিও':'অডিও')+' কল আসছে — কানেক্ট করতে ক্লিক করুন',u);
+  c.on('close',()=>{if(pend===c){pend=null;$('#inc').classList.remove('on');}});
+}
+$('#yes').onclick=async()=>{
+  const c=pend;pend=null;$('#inc').classList.remove('on');if(!c)return;
+  const kind=(c.metadata&&c.metadata.kind)||'audio';
+  try{const s=await media(kind);c.answer(s);attach(c,s,kind);openChat(c.peer.slice(3));}
+  catch{toast('মাইক/ক্যামেরার অনুমতি পাওয়া যায়নি');c.close();}
+};
+$('#no').onclick=()=>{if(pend)pend.close();pend=null;$('#inc').classList.remove('on');};
+
+/* ---------- init ---------- */
+openDB().then(d=>{db=d;const s=localStorage.getItem('me');if(s)start(s);});
+</script>
+</body>
+</html>

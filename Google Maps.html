@@ -1,0 +1,423 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<title>Maps 3D</title>
+<link rel="stylesheet" href="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.css">
+<style>
+:root{--bg:#fff;--fg:#202124;--sub:#5f6368;--p:#1a73e8;--hi:#e8f0fe;--sh:0 2px 8px rgba(0,0,0,.3)}
+@media(prefers-color-scheme:dark){:root{--bg:#303134;--fg:#e8eaed;--sub:#9aa0a6;--p:#8ab4f8;--hi:#3c4a63}}
+[hidden]{display:none!important}
+html,body{margin:0;height:100%;overflow:hidden;background:#e5e3df;font-family:Roboto,"Noto Sans Bengali",system-ui,sans-serif}
+#map{position:absolute;inset:0}
+#map .maplibregl-canvas-container,#map .maplibregl-canvas{touch-action:none!important}
+#map.ch .maplibregl-canvas,#map.pen .maplibregl-canvas{cursor:crosshair!important}
+#top{pointer-events:none;position:absolute;top:calc(12px + env(safe-area-inset-top,0px));left:12px;right:12px;z-index:5}
+#bar,#sug,#chips .c{pointer-events:auto}
+#bar{display:flex;align-items:center;gap:2px;height:52px;margin:0;padding:0 6px 0 16px;background:var(--bg);color:var(--fg);border-radius:26px;box-shadow:var(--sh)}
+#q{flex:1;min-width:0;border:0;outline:0;background:transparent;color:inherit;font-size:16px;padding:0 6px;height:100%}
+.ib{width:40px;height:40px;border:0;border-radius:50%;background:transparent;color:var(--sub);font-size:18px;cursor:pointer;flex:none}
+.ib:active{background:var(--hi)}
+#sug{display:none;margin-top:8px;max-height:50vh;overflow-y:auto;background:var(--bg);border-radius:18px;box-shadow:var(--sh)}
+.s{display:flex;gap:12px;align-items:center;padding:12px 16px;color:var(--fg);cursor:pointer}
+.s:active{background:var(--hi)}
+.s b{display:block;font-weight:500;font-size:15px}
+.s small{color:var(--sub);font-size:13px}
+#chips{display:flex;gap:8px;margin-top:10px;overflow-x:auto}
+.c{border:0;border-radius:16px;padding:7px 14px;font-size:14px;background:var(--bg);color:var(--fg);box-shadow:var(--sh);cursor:pointer;white-space:nowrap;flex:none}
+.c.on{background:var(--p);color:#fff}
+#fabs{position:absolute;right:12px;bottom:calc(158px + env(safe-area-inset-bottom,0px));z-index:5;display:flex;flex-direction:column;gap:10px}
+.f{width:46px;height:46px;border:0;border-radius:50%;background:var(--bg);color:var(--fg);font-size:20px;font-weight:600;box-shadow:var(--sh);cursor:pointer;display:grid;place-items:center;padding:0}
+.f.on{background:var(--p);color:#fff}
+.f.big{background:var(--p);color:#fff}
+#tools,#colors{position:absolute;left:50%;transform:translateX(-50%);z-index:5;display:flex;align-items:center;gap:4px;max-width:calc(100vw - 16px);overflow-x:auto;background:var(--bg);border-radius:30px;padding:6px;box-shadow:var(--sh);scrollbar-width:none}
+#tools{bottom:calc(36px + env(safe-area-inset-bottom,0px))}
+#colors{bottom:calc(100px + env(safe-area-inset-bottom,0px));padding:6px 10px;gap:8px}
+#tools button{width:44px;height:44px;border:0;border-radius:50%;background:transparent;color:var(--fg);font-size:20px;cursor:pointer;flex:none}
+#tools button.on{background:var(--p);color:#fff}
+#tools button:active{background:var(--hi)}
+#tools i{width:1px;height:24px;background:var(--sub);opacity:.4;flex:none}
+.sw{width:28px;height:28px;border-radius:50%;border:2px solid rgba(128,128,128,.5);padding:0;cursor:pointer;flex:none}
+.sw.on{border-color:var(--fg);box-shadow:0 0 0 2px var(--p)}
+#wd{box-shadow:none;border:1px solid var(--sub);padding:4px 10px}
+#spd{position:absolute;left:12px;bottom:calc(158px + env(safe-area-inset-bottom,0px));z-index:5;width:68px;height:68px;border-radius:50%;background:var(--bg);color:var(--fg);box-shadow:var(--sh);display:flex;flex-direction:column;align-items:center;justify-content:center}
+#spd b{font-size:22px;line-height:1;font-weight:500}
+#spd small{font-size:10px;color:var(--sub)}
+#msg{position:absolute;left:16px;right:16px;bottom:calc(170px + env(safe-area-inset-bottom,0px));z-index:30;background:#323232;color:#fff;padding:12px 16px;border-radius:8px;display:none;font-size:14px;text-align:center;pointer-events:none}
+.dot{width:18px;height:18px;border-radius:50%;background:#4285f4;border:3px solid #fff;box-shadow:0 0 6px rgba(0,0,0,.5)}
+.pinm{cursor:pointer;line-height:0}
+
+/* ---- পপ-আপ সিস্টেম ---- */
+#dock{position:absolute;top:calc(12px + env(safe-area-inset-top,0px));right:12px;z-index:10;display:flex;flex-direction:column;gap:10px}
+#dock .f.on{background:var(--p);color:#fff}
+.pop{position:absolute;top:calc(12px + env(safe-area-inset-top,0px));right:68px;z-index:9;width:min(340px,calc(100vw - 84px));max-height:calc(100% - 40px);overflow:auto;background:var(--bg);color:var(--fg);border-radius:18px;box-shadow:var(--sh);padding:10px 12px 12px}
+.ph{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.ph b{font-size:15px;font-weight:500}
+.px{width:32px;height:32px;font-size:15px}
+#bar{box-shadow:none;border:1px solid rgba(128,128,128,.4);height:46px;border-radius:23px}
+#sug{box-shadow:none;margin-top:6px;max-height:45vh}
+#chips{flex-wrap:wrap;margin-top:0}
+#chips .c{box-shadow:none;border:1px solid rgba(128,128,128,.4)}
+#chips .c.on{border-color:var(--p)}
+#fabs{position:static;flex-direction:row;flex-wrap:wrap;gap:10px}
+#fabs .f{box-shadow:none;border:1px solid rgba(128,128,128,.4)}
+#fabs .f.big{border-color:var(--p)}
+#tools,#colors{position:static;transform:none;box-shadow:none;background:transparent;padding:0;border-radius:0;max-width:none;flex-wrap:wrap;overflow:visible;gap:6px}
+#colors{margin-top:10px;gap:8px}
+#tools button{border:1px solid rgba(128,128,128,.4)}
+#tools button.on{border-color:var(--p)}
+#done{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(36px + env(safe-area-inset-bottom,0px));z-index:10;width:56px;height:56px}
+#spd{bottom:calc(36px + env(safe-area-inset-bottom,0px))}
+#msg{bottom:calc(110px + env(safe-area-inset-bottom,0px))}
+</style>
+</head>
+<body>
+<div id="map"></div>
+
+<div id="dock">
+  <button class="f" data-p="p-search" aria-label="সার্চ">🔍</button>
+  <button class="f" data-p="p-layer" aria-label="ম্যাপ ধরন">🗺️</button>
+  <button class="f" data-p="p-tool" aria-label="আঁকার টুল">✏️</button>
+  <button class="f" data-p="p-ctl" aria-label="কন্ট্রোল">🧭</button>
+  <button class="f" id="fs" aria-label="ফুল স্ক্রিন">⛶</button>
+</div>
+<div id="p-search" class="pop" hidden>
+  <div class="ph"><b>সার্চ</b><button class="ib px">✕</button></div>
+  <form id="bar" autocomplete="off">
+    <input id="q" placeholder="জায়গা খুঁজুন বা lat, lng" enterkeyhint="search" autocomplete="off">
+    <button class="ib" id="clr" type="button" hidden>✕</button>
+    <button class="ib" type="submit" aria-label="সার্চ">🔍</button>
+  </form>
+  <div id="sug"></div>
+</div>
+<div id="p-layer" class="pop" hidden>
+  <div class="ph"><b>ম্যাপ ধরন</b><button class="ib px">✕</button></div>
+  <div id="chips">
+    <button class="c on" data-t="roadmap">ম্যাপ</button>
+    <button class="c" data-t="satellite">স্যাটেলাইট</button>
+    <button class="c" data-t="hybrid">হাইব্রিড</button>
+    <button class="c" data-t="terrain">টেরেইন</button>
+  </div>
+</div>
+<div id="p-ctl" class="pop" hidden>
+  <div class="ph"><b>কন্ট্রোল</b><button class="ib px">✕</button></div>
+  <div id="fabs">
+    <button class="f" id="cmp" aria-label="উত্তর দিকে ঘুরান"><svg viewBox="0 0 24 24" width="24" height="24"><path d="M12 2 8 12h8z" fill="#e53935"/><path d="M12 22l4-10H8z" fill="currentColor" opacity=".55"/></svg></button>
+    <button class="f" id="d3" aria-label="৩ডি ভিউ">3D</button>
+    <button class="f" id="zin" aria-label="বড় করুন">＋</button>
+    <button class="f" id="zout" aria-label="ছোট করুন">－</button>
+    <button class="f big" id="loc" aria-label="আমার অবস্থান">◎</button>
+  </div>
+</div>
+<div id="p-tool" class="pop" hidden>
+  <div class="ph"><b>আঁকার টুল</b><button class="ib px">✕</button></div>
+  <div id="tools">
+    <button data-t="pan" class="on" title="ম্যাপ সরান">✋</button>
+    <button data-t="pen" title="ফ্রিহ্যান্ড আঁকা">✏️</button>
+    <button data-t="line" title="সরল রেখা">📏</button>
+    <button data-t="area" title="এলাকা">⬠</button>
+    <button data-t="pin" title="মার্কার">📍</button>
+    <button data-t="erase" title="মুছুন">🧽</button>
+    <button id="undo" title="পূর্বাবস্থা">↩️</button>
+    <button id="clrall" title="সব আঁকা মুছুন">🗑️</button>
+  </div>
+  <div id="colors" hidden><button class="c" id="wd"></button></div>
+</div>
+<button class="f big" id="done" title="শেষ করুন" hidden>✓</button>
+<div id="spd"><b id="spdv">0</b><small>km/h</small></div>
+
+<div id="msg"></div>
+
+<script src="https://unpkg.com/maplibre-gl@4.7.1/dist/maplibre-gl.js"></script>
+<script>
+(function(){
+const $ = id => document.getElementById(id), mem = {};
+const store = {
+  get(k){ try{ return localStorage.getItem(k); }catch(e){ return mem[k] || null; } },
+  set(k,v){ mem[k] = v; try{ localStorage.setItem(k,v); }catch(e){} }
+};
+function toast(t){ const m=$('msg'); m.textContent=t; m.style.display='block'; clearTimeout(toast.t); toast.t=setTimeout(()=>m.style.display='none',3200); }
+if(typeof maplibregl === 'undefined'){ toast('ম্যাপ লাইব্রেরি লোড হয়নি — ইন্টারনেট চেক করুন'); return; }
+const jget = (k,d) => { try{ return JSON.parse(store.get(k)) || d; }catch(e){ return d; } };
+
+/* ---------- বেস ম্যাপ স্টাইল ---------- */
+const G = l => [0,1,2,3].map(i => 'https://mt'+i+'.google.com/vt/lyrs='+l+'&x={x}&y={y}&z={z}&hl=bn');
+const DEM = 'https://s3.amazonaws.com/elevation-tiles-prod/terrarium/{z}/{x}/{y}.png';
+function rs(list){ // Google raster স্টাইল + ৩ডি ভূখণ্ড
+  const sources = {}, layers = [];
+  list.forEach(([id, tiles, mz, attr]) => { sources[id] = {type:'raster', tiles:[].concat(tiles), tileSize:256, maxzoom:mz, attribution:attr}; layers.push({id, type:'raster', source:id}); });
+  sources.dem = {type:'raster-dem', tiles:[DEM], encoding:'terrarium', tileSize:256, maxzoom:15};
+  return {version:8, sources, layers, terrain:{source:'dem', exaggeration:1.3}};
+}
+const GA = 'Map data © Google';
+const S = {
+  roadmap:rs([['g', G('m'), 21, GA]]),
+  satellite:rs([['g', G('s'), 21, GA]]),
+  hybrid:rs([['g', G('y'), 21, GA]]),
+  terrain:rs([['g', G('p'), 21, GA]])
+};
+let base = store.get('gbase3d'); if(!S[base]) base = 'roadmap';
+const v = jget('gview3d', null);
+const map = new maplibregl.Map({
+  container:'map', style:S[base],
+  center: v ? [v[1],v[0]] : [90.4125,23.8103], zoom: v ? v[2] : 12, bearing: v ? v[3] : 0, pitch: v ? v[4] : 0,
+  maxPitch:80, maxZoom:20, bearingSnap:0, attributionControl:false
+});
+map.addControl(new maplibregl.AttributionControl({compact:true}), 'bottom-left');
+const cc = map.getCanvasContainer();
+
+function setBase(k){
+  document.querySelectorAll('#chips .c').forEach(b => b.classList.toggle('on', b.dataset.t === k));
+  if(k === base) return;
+  base = k; store.set('gbase3d', k); map.setStyle(S[k]);
+}
+document.querySelectorAll('#chips .c').forEach(b => b.onclick = () => setBase(b.dataset.t));
+setBase(base);
+
+/* ---------- কম্পাস / ৩ডি / জুম ---------- */
+map.on('rotate', () => { $('cmp').firstElementChild.style.transform = 'rotate('+(-map.getBearing())+'deg)'; });
+map.on('pitch', () => $('d3').classList.toggle('on', map.getPitch() > 10));
+$('cmp').onclick = () => map.easeTo({bearing:0, pitch:0, duration:600});
+$('d3').onclick = () => map.easeTo({pitch: map.getPitch() > 10 ? 0 : 65, duration:700});
+$('zin').onclick = () => map.zoomIn(); $('zout').onclick = () => map.zoomOut();
+let vt; map.on('moveend', () => { clearTimeout(vt); vt = setTimeout(() => { const c = map.getCenter(); store.set('gview3d', JSON.stringify([+c.lat.toFixed(6), +c.lng.toFixed(6), map.getZoom(), map.getBearing(), map.getPitch()])); }, 400); });
+
+/* ---------- আঁকা (সেভ থাকে) ---------- */
+const COLORS = ['#e53935','#111111','#1e88e5','#43a047','#fdd835','#fb8c00','#8e24aa'], W = [3,6,10];
+let items = [], uid = 0, color = COLORS[0], wi = 1, width = W[wi], tool = 'pan', pend = [];
+const H = {pan:'ম্যাপ সরান', pen:'এক আঙুলে আঁকুন · দুই আঙুলে জুম/ঘোরান/কাত করুন', line:'ট্যাপ করে পয়েন্ট দিন, শেষে ✓', area:'ট্যাপ করে কোণ দিন, শেষে ✓', pin:'ট্যাপ করে মার্কার দিন', erase:'আঁকার উপর ট্যাপ করে মুছুন'};
+const FC = f => ({type:'FeatureCollection', features:f});
+const LS = (k, coords, props) => ({type:'Feature', properties:Object.assign({k}, props), geometry:{type:'LineString', coordinates:coords}});
+const flip = p => p.map(q => [q[1], q[0]]);
+
+function fc(){
+  return FC(items.filter(i => i.d.t !== 'pin').map(i => {
+    const d = i.d, c = flip(d.p);
+    return {type:'Feature', properties:{id:d._id, c:d.c, w:d.w}, geometry: d.t === 'area' ? {type:'Polygon', coordinates:[c.concat([c[0]])]} : {type:'LineString', coordinates:c}};
+  }));
+}
+function refresh(){ const s = map.getSource('draw'); if(s) s.setData(fc()); }
+function setLive(f){ const s = map.getSource('live'); if(s) s.setData(FC(f)); }
+
+// স্টাইল বদলালেও আঁকার লেয়ার আবার বসে
+map.on('style.load', () => {
+  if(map.getSource('draw')) return;
+  if(map.getSource('openmaptiles') && !map.getStyle().layers.some(l => l.type === 'fill-extrusion')){
+    map.addLayer({id:'b3d', type:'fill-extrusion', source:'openmaptiles', 'source-layer':'building', minzoom:14,
+      paint:{'fill-extrusion-color':'#d9d4cc', 'fill-extrusion-height':['coalesce',['get','render_height'],6], 'fill-extrusion-base':['coalesce',['get','render_min_height'],0], 'fill-extrusion-opacity':.85}});
+  }
+  const lay = {'line-cap':'round', 'line-join':'round'}, pc = {'line-color':['get','c'], 'line-width':['get','w']};
+  map.addSource('draw', {type:'geojson', data:fc()});
+  map.addSource('live', {type:'geojson', data:FC([])});
+  map.addLayer({id:'d-fill', type:'fill', source:'draw', filter:['==',['geometry-type'],'Polygon'], paint:{'fill-color':['get','c'], 'fill-opacity':.25}});
+  map.addLayer({id:'d-line', type:'line', source:'draw', layout:lay, paint:pc});
+  map.addLayer({id:'l-pen', type:'line', source:'live', filter:['==',['get','k'],'pen'], layout:lay, paint:pc});
+  map.addLayer({id:'l-pend', type:'line', source:'live', filter:['==',['get','k'],'pend'], layout:lay, paint:Object.assign({'line-dasharray':[2,2]}, pc)});
+  map.addLayer({id:'l-pt', type:'circle', source:'live', filter:['==',['geometry-type'],'Point'], paint:{'circle-radius':5, 'circle-color':['get','c'], 'circle-stroke-color':'#fff', 'circle-stroke-width':2}});
+});
+
+function pinEl(c){
+  const d = document.createElement('div'); d.className = 'pinm';
+  d.innerHTML = '<svg viewBox="0 0 24 32" width="30" height="40"><path d="M12 0C5.400 0 0 5.400 0 12c0 9 12 20 12 20s12-11 12-20C24 5.400 18.600 0 12 0z" fill="'+c+'" stroke="#fff" stroke-width="1.500"/><circle cx="12" cy="12" r="4.500" fill="#fff"/></svg>';
+  return d;
+}
+function mkMarker(c, ll, note){
+  const el = pinEl(c);
+  const m = new maplibregl.Marker({element:el, anchor:'bottom'}).setLngLat(ll);
+  if(note) m.setPopup(new maplibregl.Popup({offset:[0,-36]}).setText(note));
+  return m.addTo(map);
+}
+function save(){ store.set('osmdraw3d', JSON.stringify(items.map(i => ({t:i.d.t, c:i.d.c, w:i.d.w, p:i.d.p, n:i.d.n})))); }
+function add(d, silent){
+  d._id = ++uid;
+  const it = {d};
+  if(d.t === 'pin'){
+    it.m = mkMarker(d.c, [d.p[0][1], d.p[0][0]], d.n);
+    it.m.getElement().addEventListener('click', ev => { if(tool === 'erase'){ ev.stopPropagation(); remove(d._id); } });
+  }
+  items.push(it); refresh(); if(!silent) save();
+}
+function remove(id){
+  const i = items.findIndex(x => x.d._id === id); if(i < 0) return;
+  if(items[i].m) items[i].m.remove();
+  items.splice(i, 1); refresh(); save();
+}
+jget('osmdraw3d', []).forEach(d => add(d, true));
+
+function drawPend(){
+  const f = [];
+  if(pend.length > 1) f.push(LS('pend', pend, {c:color, w:width}));
+  pend.forEach(p => f.push({type:'Feature', properties:{c:color}, geometry:{type:'Point', coordinates:p}}));
+  setLive(f); $('done').hidden = !pend.length;
+}
+function finish(){
+  const p = flip(pend);
+  if(tool === 'line' && pend.length >= 2) add({t:'line', c:color, w:width, p});
+  else if(tool === 'area' && pend.length >= 3) add({t:'area', c:color, w:width, p});
+  pend = []; drawPend();
+}
+const ll6 = q => [+q.lng.toFixed(6), +q.lat.toFixed(6)];
+map.on('click', e => {
+  $('sug').style.display = 'none';
+  if(tool === 'line' || tool === 'area'){ pend.push(ll6(e.lngLat)); drawPend(); }
+  else if(tool === 'pin'){
+    if(e.originalEvent.target.closest('.pinm')) return;
+    const n = prompt('নাম/নোট (ঐচ্ছিক)'); if(n === null) return;
+    add({t:'pin', c:color, p:[[+e.lngLat.lat.toFixed(6), +e.lngLat.lng.toFixed(6)]], n:n.trim()});
+  } else if(tool === 'erase' && map.getLayer('d-line')){
+    const p = e.point;
+    const f = map.queryRenderedFeatures([[p.x-12,p.y-12],[p.x+12,p.y+12]], {layers:['d-line','d-fill']});
+    if(f.length) remove(f[0].properties.id);
+  }
+});
+
+/* ফ্রিহ্যান্ড কলম: এক আঙুলে আঁকা; দ্বিতীয় আঙুল নামলে স্ট্রোক বাতিল হয়ে জুম/ঘোরানো/কাত চলে */
+let stroke = null, lastXY = null, raf = 0; const down = new Set();
+function xy(e){ const r = cc.getBoundingClientRect(); return [e.clientX - r.left, e.clientY - r.top]; }
+cc.addEventListener('pointerdown', e => {
+  if(tool !== 'pen') return;
+  if(e.isPrimary) down.clear();
+  down.add(e.pointerId);
+  if(down.size > 1){ stroke = null; setLive([]); map.dragPan.enable(); return; }
+  if(e.pointerType === 'mouse' && (e.button !== 0 || e.ctrlKey)) return;
+  map.dragPan.disable();
+  lastXY = xy(e); stroke = [ll6(map.unproject(lastXY))];
+});
+cc.addEventListener('pointermove', e => {
+  if(!stroke || down.size !== 1) return;
+  const p = xy(e);
+  if(Math.hypot(p[0]-lastXY[0], p[1]-lastXY[1]) < 3) return;
+  lastXY = p; stroke.push(ll6(map.unproject(p)));
+  if(!raf) raf = requestAnimationFrame(() => { raf = 0; if(stroke) setLive([LS('pen', stroke, {c:color, w:width})]); });
+});
+function up(e){
+  down.delete(e.pointerId);
+  if(down.size) return;
+  if(stroke){
+    if(stroke.length < 2) stroke.push(stroke[0]);
+    const d = {t:'pen', c:color, w:width, p:flip(stroke)};
+    stroke = null; setLive([]); add(d);
+  }
+  if(tool === 'pen') map.dragPan.enable();
+}
+cc.addEventListener('pointerup', up); cc.addEventListener('pointercancel', up);
+
+function setTool(t, silent){
+  finish(); stroke = null; setLive([]); map.dragPan.enable(); tool = t;
+  document.querySelectorAll('#tools [data-t]').forEach(b => b.classList.toggle('on', b.dataset.t === t));
+  $('map').classList.toggle('pen', t === 'pen');
+  $('map').classList.toggle('ch', t === 'line' || t === 'area' || t === 'pin');
+  $('colors').hidden = !['pen','line','area','pin'].includes(t);
+  if(!silent) toast(H[t]);
+}
+document.querySelectorAll('#tools [data-t]').forEach(b => b.onclick = () => setTool(b.dataset.t));
+$('done').onclick = finish;
+$('undo').onclick = () => {
+  if(pend.length){ pend.pop(); drawPend(); return; }
+  if(!items.length) return toast('আঁকার কিছু নেই');
+  remove(items[items.length-1].d._id);
+};
+$('clrall').onclick = () => {
+  if(!items.length) return toast('আঁকার কিছু নেই');
+  if(!confirm('সব আঁকা ও মার্কার মুছে ফেলবেন?')) return;
+  items.forEach(i => i.m && i.m.remove()); items = []; refresh(); save();
+};
+COLORS.forEach((c,i) => {
+  const b = document.createElement('button'); b.className = 'sw' + (i ? '' : ' on'); b.style.background = c;
+  b.onclick = () => { color = c; document.querySelectorAll('.sw').forEach(x => x.classList.toggle('on', x === b)); drawPend(); };
+  $('colors').insertBefore(b, $('wd'));
+});
+$('wd').textContent = '● ' + width;
+$('wd').onclick = () => { wi = (wi+1) % W.length; width = W[wi]; $('wd').textContent = '● ' + width; drawPend(); };
+setTool('pan', true);
+
+/* ---------- সার্চ (Nominatim / OpenStreetMap) ---------- */
+let sm = null;
+function mark(lng, lat, t){
+  if(sm) sm.remove();
+  sm = mkMarker('#ea4335', [lng, lat], t); sm.togglePopup();
+  $('clr').hidden = false;
+}
+function showList(a){
+  const s = $('sug'); s.textContent = '';
+  if(!a.length){ s.style.display = 'none'; return toast('কিছু পাওয়া যায়নি'); }
+  a.forEach(o => {
+    const d = document.createElement('div'); d.className = 's';
+    const w = document.createElement('div'), b = document.createElement('b'), m = document.createElement('small');
+    const parts = o.display_name.split(',');
+    b.textContent = parts[0]; m.textContent = parts.slice(1,4).join(',').trim();
+    w.append(b, m);
+    const ic = document.createElement('span'); ic.textContent = '📍';
+    d.append(ic, w);
+    d.onclick = () => {
+      s.style.display = 'none'; $('q').blur();
+      const bb = o.boundingbox;
+      if(bb) map.fitBounds([[+bb[2],+bb[0]],[+bb[3],+bb[1]]], {maxZoom:18, padding:40}); else map.flyTo({center:[+o.lon,+o.lat], zoom:16});
+      mark(+o.lon, +o.lat, o.display_name);
+    };
+    s.append(d);
+  });
+  s.style.display = 'block';
+}
+async function search(q){
+  q = q.trim(); if(!q) return;
+  const m = q.match(/^(-?\d+(?:\.\d+)?)\s*[, ]\s*(-?\d+(?:\.\d+)?)$/);
+  if(m){
+    const lat = +m[1], lng = +m[2];
+    if(Math.abs(lat) > 90 || Math.abs(lng) > 180) return toast('স্থানাঙ্ক সীমার বাইরে');
+    map.flyTo({center:[lng,lat], zoom:17}); mark(lng, lat, q); return;
+  }
+  try{
+    const res = await fetch('https://nominatim.openstreetmap.org/search?format=jsonv2&limit=6&accept-language=bn,en&q=' + encodeURIComponent(q));
+    showList(await res.json());
+  }catch(e){ toast('সার্চ করা যায়নি — ইন্টারনেট চেক করুন'); }
+}
+$('bar').onsubmit = e => { e.preventDefault(); search($('q').value); };
+$('q').oninput = () => { $('clr').hidden = !$('q').value && !sm; };
+$('clr').onclick = () => { $('q').value = ''; $('sug').style.display = 'none'; if(sm){ sm.remove(); sm = null; } $('clr').hidden = true; };
+
+/* ---------- আমার লোকেশন ও গতি ---------- */
+let wid = null, me = null;
+function locate(){
+  if(!navigator.geolocation) return toast('এই ডিভাইসে লোকেশন সাপোর্ট নেই');
+  if(wid !== null){ if(me) map.flyTo({center:me.getLngLat(), zoom:Math.max(map.getZoom(), 17)}); return; }
+  wid = navigator.geolocation.watchPosition(p => {
+    const ll = [p.coords.longitude, p.coords.latitude];
+    if(!me){
+      const el = document.createElement('div'); el.className = 'dot';
+      me = new maplibregl.Marker({element:el}).setLngLat(ll).addTo(map);
+      map.flyTo({center:ll, zoom:Math.max(map.getZoom(), 17)});
+    } else me.setLngLat(ll);
+    const kmh = typeof p.coords.speed === 'number' ? p.coords.speed * 3.6 : 0;
+    $('spdv').textContent = Math.max(0, Math.round(kmh));
+  }, () => { toast('লোকেশন পাওয়া যায়নি — পারমিশন দিন'); navigator.geolocation.clearWatch(wid); wid = null; }, {enableHighAccuracy:true});
+}
+$('loc').onclick = locate;
+if(!v) locate();
+})();
+</script>
+<script>
+(function(){
+const pops=[...document.querySelectorAll('.pop')], btns=[...document.querySelectorAll('#dock [data-p]')];
+function closeAll(){ pops.forEach(p=>p.hidden=true); btns.forEach(b=>b.classList.remove('on')); }
+btns.forEach(b=>b.onclick=()=>{
+  const p=document.getElementById(b.dataset.p), open=p.hidden;
+  closeAll();
+  if(open){ p.hidden=false; b.classList.add('on'); if(p.id==='p-search') setTimeout(()=>document.getElementById('q').focus(),50); }
+});
+document.querySelectorAll('.px').forEach(x=>x.onclick=closeAll);
+document.getElementById('map').addEventListener('pointerdown',closeAll);
+const fs=document.getElementById('fs'), de=document.documentElement;
+const inFs=()=>document.fullscreenElement||document.webkitFullscreenElement;
+fs.onclick=()=>{
+  const req=de.requestFullscreen||de.webkitRequestFullscreen, ex=document.exitFullscreen||document.webkitExitFullscreen;
+  if(!req){ const m=document.getElementById('msg'); m.textContent='এই ব্রাউজারে ফুল স্ক্রিন চলে না'; m.style.display='block'; setTimeout(()=>m.style.display='none',2500); return; }
+  inFs()?ex.call(document):req.call(de);
+};
+function sync(){ fs.textContent=inFs()?'🗗':'⛶'; fs.classList.toggle('on',!!inFs()); }
+document.addEventListener('fullscreenchange',sync); document.addEventListener('webkitfullscreenchange',sync);
+})();
+</script>
+</body>
+</html>

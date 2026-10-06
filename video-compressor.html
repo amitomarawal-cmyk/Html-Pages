@@ -42,8 +42,10 @@
   }
   button:disabled{opacity:.5; cursor:not-allowed;}
   button.secondary{background:#232833;}
-  .filelist{max-height:150px; overflow-y:auto; margin-top:10px; font-size:13px; color:var(--sub);}
-  .filelist div{padding:3px 0; border-bottom:1px solid #1f232a;}
+  .filelist{max-height:220px; overflow-y:auto; margin-top:10px; font-size:13px; color:var(--sub);}
+  .filelist div{padding:5px 0; border-bottom:1px solid #1f232a; display:flex; justify-content:space-between; align-items:center; gap:8px;}
+  .filelist .rm{background:none; color:var(--danger); width:auto; margin:0; padding:2px 8px; font-size:14px; border-radius:6px;}
+  .dlbtn{background:var(--accent); color:#fff; text-decoration:none; padding:6px 12px; border-radius:8px; font-size:12px; font-weight:600; white-space:nowrap;}
   .progressbar{
     height:10px; background:#0d1014; border-radius:6px; overflow:hidden; margin-top:14px;
     border:1px solid var(--border);
@@ -59,15 +61,14 @@
   .badge{display:inline-block; background:rgba(63,216,143,.15); color:var(--accent2); border-radius:6px; padding:2px 8px; font-size:11px;}
   .warn{display:inline-block; background:rgba(255,107,107,.15); color:var(--danger); border-radius:6px; padding:2px 8px; font-size:11px;}
   .resultRow{padding:8px 0; border-bottom:1px solid #1f232a; display:flex; justify-content:space-between; align-items:center; gap:10px;}
-  .resultRow a{color:var(--accent); text-decoration:none; font-size:12px; white-space:nowrap;}
-  .rateLabel{display:flex; justify-content:space-between; font-size:12px; color:var(--sub); margin-bottom:6px;}
+    .rateLabel{display:flex; justify-content:space-between; font-size:12px; color:var(--sub); margin-bottom:6px;}
   .rateLabel b{color:var(--text); font-size:13px;}
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>🎬 ভিডিও কমপ্রেসর</h1>
-  <p class="sub">ভিডিও ইমপোর্ট করুন — সর্বোচ্চ সাইজ / রেজোলিউশন / কম্প্রেশন রেট সেট করুন, সাউন্ডসহ কমপ্রেস হয়ে ভিডিও ডাউনলোড হয়ে যাবে। সবকিছু আপনার ব্রাউজারেই হয়, কোনো ভিডিও সার্ভারে যায় না।</p>
+  <p class="sub">একাধিক ভিডিও সিলেক্ট করুন — প্রতি ১০ মিনিটের জন্য সাইজ ও রেজোলিউশন সেট করুন, কমপ্রেস শেষে লিস্ট থেকে আলাদা আলাদা ডাউনলোড করুন। সবকিছু আপনার ব্রাউজারেই হয়, কোনো ভিডিও সার্ভারে যায় না।</p>
 
   <div class="card">
     <div class="drop" id="drop">
@@ -78,30 +79,25 @@
 
     <div class="row">
       <div class="field">
-        <label>সর্বোচ্চ সাইজ (MB) — ফাঁকা রাখলে কম্প্রেশন রেট অনুযায়ী হবে</label>
-        <input type="number" id="maxMB" placeholder="যেমন: 20" min="1" step="0.5">
+        <label>প্রতি ১০ মিনিট ভিডিওর সাইজ (MB)</label>
+        <input type="number" id="perTenMB" value="3" min="0.5" step="0.5">
       </div>
       <div class="field">
         <label>সর্বোচ্চ প্রস্থ/উচ্চতা (px)</label>
         <select id="maxDim">
           <option value="0">মূল রেজোলিউশন (কমাবে না)</option>
           <option value="1920">1920px (1080p)</option>
-          <option value="1280" selected>1280px (720p)</option>
+          <option value="1280">1280px (720p)</option>
           <option value="854">854px (480p)</option>
-          <option value="640">640px (360p)</option>
+          <option value="640" selected>640px (360p)</option>
           <option value="426">426px (240p)</option>
         </select>
       </div>
     </div>
 
-    <div class="field" style="margin-top:16px;">
-      <div class="rateLabel"><span>কম্প্রেশন রেট (সর্বোচ্চ সাইজ ফাঁকা থাকলে এটা কাজ করবে)</span><b id="rateVal">80%</b></div>
-      <input type="range" id="rate" min="10" max="95" value="80" step="1">
-    </div>
-
     <div class="note">
       এই অ্যাপ ব্রাউজারের নিজস্ব রেকর্ডিং পদ্ধতিতে (canvas + MediaRecorder) কাজ করে — তাই কোনো এক্সটার্নাল লাইব্রেরি বা ইন্টারনেট ছাড়াই সম্পূর্ণ অফলাইনে চলে।
-      সাউন্ডও ভিডিওর সাথে একই অনুপাতে কমপ্রেস হয়। <b>ভিডিওর দৈর্ঘ্য যত, কমপ্রেস হতে প্রায় ততটুকুই সময় লাগবে</b> (রিয়েল-টাইম প্রসেসিং)।
+      ফাইলের সাইজ = ভিডিওর দৈর্ঘ্য ÷ ১০ মিনিট × আপনার দেওয়া MB (যেমন ৩০ মিনিটের ভিডিও, ৩ MB হলে ≈ ৯ MB)। মূল ফাইল এর চেয়ে ছোট হলে আর বাড়ানো হয় না। <b>ভিডিওর দৈর্ঘ্য যত, কমপ্রেস হতে প্রায় ততটুকুই সময় লাগবে</b> (রিয়েল-টাইম প্রসেসিং)।
       আউটপুট ফরম্যাট <b>.webm</b> (Chrome/Firefox/Edge/VLC-এ চলে; iPhone-এর ডিফল্ট প্লেয়ারে না চললে VLC অ্যাপ দিয়ে দেখুন)।
     </div>
 
@@ -124,8 +120,8 @@
   </div>
 
   <div class="card hidden" id="doneCard">
-    <div class="badge">✔ সম্পন্ন</div>
-    <p style="margin:10px 0 0; font-size:14px;">সব ভিডিও কমপ্রেস হয়ে ডাউনলোড হয়ে গেছে। নিচে প্রতিটার লিংক থেকে আবার ডাউনলোড করতে পারবেন।</p>
+    <div class="badge hidden" id="doneBadge">✔ সব সম্পন্ন</div>
+    <p style="margin:10px 0 0; font-size:14px;">কমপ্রেস হওয়া ভিডিও নিচে আসবে — প্রতিটা আলাদা ডাউনলোড করুন।</p>
     <div id="resultsList"></div>
     <button class="secondary" id="resetBtn">নতুন করে শুরু করুন</button>
   </div>
@@ -140,10 +136,6 @@ const drop = document.getElementById('drop');
 const dropText = document.getElementById('dropText');
 const filelist = document.getElementById('filelist');
 const startBtn = document.getElementById('startBtn');
-const rate = document.getElementById('rate');
-const rateVal = document.getElementById('rateVal');
-
-rate.addEventListener('input', ()=> rateVal.textContent = rate.value + '%');
 
 // Feature detection
 if(!window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream){
@@ -157,16 +149,37 @@ drop.addEventListener('click', ()=> fileInput.click());
 ['dragenter','dragover'].forEach(ev => drop.addEventListener(ev, e=>{e.preventDefault(); drop.classList.add('drag');}));
 ['dragleave','drop'].forEach(ev => drop.addEventListener(ev, e=>{e.preventDefault(); drop.classList.remove('drag');}));
 drop.addEventListener('drop', e=>{
-  handleFiles(Array.from(e.dataTransfer.files).filter(f=>f.type.startsWith('video/')));
+  handleFiles(Array.from(e.dataTransfer.files));
 });
 fileInput.addEventListener('change', e=> handleFiles(Array.from(e.target.files)));
 
 function handleFiles(list){
+  list = list.filter(f=>f.type.startsWith('video/'));
   if(!list.length) return;
-  files = list;
-  dropText.textContent = `✅ ${files.length}টি ভিডিও নির্বাচিত হয়েছে`;
+  for(const f of list){
+    if(!files.some(x=>x.name===f.name && x.size===f.size && x.lastModified===f.lastModified)) files.push(f);
+  }
+  fileInput.value = '';
+  renderFiles();
+}
+
+function renderFiles(){
+  if(!files.length){
+    dropText.textContent = '📁 এখানে ক্লিক করুন অথবা ভিডিও টেনে এনে ছাড়ুন (একাধিক সিলেক্ট করা যাবে)';
+    filelist.classList.add('hidden'); filelist.innerHTML = ''; startBtn.disabled = true; return;
+  }
+  dropText.textContent = `✅ ${files.length}টি ভিডিও নির্বাচিত — আরও যোগ করতে ক্লিক করুন`;
   filelist.classList.remove('hidden');
-  filelist.innerHTML = files.map(f=>`<div>${f.name} — ${(f.size/1024/1024).toFixed(2)} MB</div>`).join('');
+  filelist.innerHTML = '';
+  files.forEach((f,i)=>{
+    const d = document.createElement('div');
+    const sp = document.createElement('span');
+    sp.textContent = `${f.name} — ${(f.size/1024/1024).toFixed(2)} MB`;
+    const b = document.createElement('button');
+    b.className = 'rm'; b.textContent = '✕';
+    b.addEventListener('click', ()=>{ files.splice(i,1); renderFiles(); });
+    d.appendChild(sp); d.appendChild(b); filelist.appendChild(d);
+  });
   startBtn.disabled = false;
 }
 
@@ -321,17 +334,13 @@ function computeDims(vw, vh, maxDim){
   return {w,h};
 }
 
-function computeBitrates(file, duration, maxMB, ratePct){
-  const originalBitrate = (file.size*8)/duration; // bits/sec, video+audio combined
-  let targetTotal;
-  if(maxMB && maxMB>0){
-    targetTotal = (maxMB*1024*1024*8)/duration;
-  } else {
-    targetTotal = originalBitrate * (1 - ratePct/100);
-  }
-  targetTotal = Math.max(targetTotal, 250000); // floor so it never goes to near-zero
-  const audioBitrate = Math.min(128000, Math.max(48000, targetTotal*0.12));
-  const videoBitrate = Math.max(targetTotal - audioBitrate, 150000);
+function computeBitrates(file, duration, perTenMB){
+  const originalBitrate = (file.size*8)/duration; // bits/sec
+  let targetTotal = (perTenMB*1024*1024*8)/600;   // bits/sec for X MB per 10 min
+  targetTotal = Math.min(targetTotal, originalBitrate); // never exceed original
+  targetTotal = Math.max(targetTotal, 20000);
+  const audioBitrate = Math.min(96000, Math.max(16000, targetTotal*0.2));
+  const videoBitrate = Math.max(targetTotal - audioBitrate, 8000);
   return {videoBitrate, audioBitrate, targetTotal};
 }
 
@@ -357,8 +366,8 @@ function compressOne(file, opts){
       try{
         const duration = video.duration;
         const {w, h} = computeDims(video.videoWidth, video.videoHeight, opts.maxDim);
-        const fps = opts.ratePct > 85 ? 20 : (opts.ratePct > 60 ? 24 : 30);
-        const {videoBitrate, audioBitrate} = computeBitrates(file, duration, opts.maxMB, opts.ratePct);
+        const {videoBitrate, audioBitrate} = computeBitrates(file, duration, opts.perTenMB);
+        const fps = videoBitrate < 120000 ? 15 : (videoBitrate < 500000 ? 24 : 30);
 
         const canvas = document.createElement('canvas');
         canvas.width = w; canvas.height = h;
@@ -425,12 +434,12 @@ function compressOne(file, opts){
 }
 
 document.getElementById('startBtn').addEventListener('click', async ()=>{
-  const maxMB = parseFloat(document.getElementById('maxMB').value) || 0;
+  const perTenMB = parseFloat(document.getElementById('perTenMB').value) || 3;
   const maxDim = parseInt(document.getElementById('maxDim').value) || 0;
-  const ratePct = parseInt(rate.value) || 80;
 
   document.getElementById('progressCard').classList.remove('hidden');
-  document.getElementById('doneCard').classList.add('hidden');
+  document.getElementById('doneCard').classList.remove('hidden');
+  document.getElementById('doneBadge').classList.add('hidden');
   startBtn.disabled = true;
 
   let originalTotal = 0, newTotal = 0;
@@ -447,7 +456,7 @@ document.getElementById('startBtn').addEventListener('click', async ()=>{
 
     try{
       const {blob, mimeType} = await compressOne(file, {
-        maxMB, maxDim, ratePct,
+        perTenMB, maxDim,
         onProgress: (pct)=>{ document.getElementById('fill').style.width = pct + '%'; }
       });
 
@@ -457,13 +466,9 @@ document.getElementById('startBtn').addEventListener('click', async ()=>{
       const url = URL.createObjectURL(blob);
       resultUrls.push(url);
 
-      const a = document.createElement('a');
-      a.href = url; a.download = baseName;
-      document.body.appendChild(a); a.click(); a.remove();
-
       const row = document.createElement('div');
       row.className = 'resultRow';
-      row.innerHTML = `<span>${baseName} — ${bytesToMB(file.size)}MB → <b>${bytesToMB(blob.size)}MB</b></span><a href="${url}" download="${baseName}">⬇ আবার ডাউনলোড</a>`;
+      row.innerHTML = `<span>${baseName} — ${bytesToMB(file.size)}MB → <b>${bytesToMB(blob.size)}MB</b></span><a class="dlbtn" href="${url}" download="${baseName}">⬇ ডাউনলোড</a>`;
       resultsList.appendChild(row);
     }catch(err){
       console.error('Failed on', file.name, err);
@@ -479,7 +484,8 @@ document.getElementById('startBtn').addEventListener('click', async ()=>{
   }
 
   document.getElementById('progressCard').classList.add('hidden');
-  document.getElementById('doneCard').classList.remove('hidden');
+  document.getElementById('doneBadge').classList.remove('hidden');
+  startBtn.disabled = false;
 });
 
 document.getElementById('resetBtn').addEventListener('click', ()=>{
@@ -487,10 +493,7 @@ document.getElementById('resetBtn').addEventListener('click', ()=>{
   resultUrls.forEach(u=> URL.revokeObjectURL(u));
   resultUrls = [];
   fileInput.value = '';
-  dropText.textContent = '📁 এখানে ক্লিক করুন অথবা ভিডিও টেনে এনে ছাড়ুন';
-  filelist.classList.add('hidden');
-  filelist.innerHTML = '';
-  startBtn.disabled = false;
+  renderFiles();
   document.getElementById('progressCard').classList.add('hidden');
   document.getElementById('doneCard').classList.add('hidden');
   document.getElementById('fill').style.width = '0%';
