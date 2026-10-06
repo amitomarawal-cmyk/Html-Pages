@@ -1,0 +1,396 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<html xmlns='http://www.w3.org/1999/xhtml' xmlns:b='http://www.google.com/2005/gml/b' xmlns:data='http://www.google.com/2005/gml/data' xmlns:expr='http://www.google.com/2005/gml/expr'>
+<head>
+  <meta charset='utf-8'/>
+  <meta content='width=device-width, initial-scale=1' name='viewport'/>
+  <title><data:blog.title/></title>
+  <b:skin>
+    <![CDATA[
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      padding: 20px;
+    }
+    
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+    }
+    
+    .header {
+      background: rgba(255, 255, 255, 0.95);
+      padding: 40px 20px;
+      border-radius: 15px;
+      text-align: center;
+      margin-bottom: 40px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    }
+    
+    .header h1 {
+      font-size: 2.5em;
+      color: #333;
+      margin-bottom: 10px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    
+    .header p {
+      color: #666;
+      font-size: 1.1em;
+    }
+    
+    .apps-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 25px;
+      margin-bottom: 40px;
+    }
+    
+    .app-card {
+      background: white;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+      transition: all 0.3s ease;
+      cursor: pointer;
+    }
+    
+    .app-card:hover {
+      transform: translateY(-10px);
+      box-shadow: 0 15px 30px rgba(0, 0, 0, 0.3);
+    }
+    
+    .app-card a {
+      text-decoration: none;
+      color: inherit;
+      display: block;
+      height: 100%;
+    }
+    
+    .app-icon {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      height: 120px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 3em;
+      color: white;
+    }
+    
+    .app-content {
+      padding: 20px;
+    }
+    
+    .app-name {
+      font-size: 1.2em;
+      font-weight: bold;
+      color: #333;
+      margin-bottom: 8px;
+    }
+    
+    .app-desc {
+      font-size: 0.9em;
+      color: #666;
+      line-height: 1.4;
+    }
+    
+    .app-card:hover .app-name {
+      color: #667eea;
+    }
+    
+    .footer {
+      background: rgba(255, 255, 255, 0.95);
+      padding: 20px;
+      border-radius: 12px;
+      text-align: center;
+      color: #666;
+      box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+    }
+    
+    .footer p {
+      font-size: 0.95em;
+    }
+    
+    .badge {
+      display: inline-block;
+      background: #667eea;
+      color: white;
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 0.8em;
+      margin-top: 10px;
+    }
+    
+    @media (max-width: 768px) {
+      .header h1 {
+        font-size: 1.8em;
+      }
+      
+      .apps-grid {
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 15px;
+      }
+      
+      .app-icon {
+        height: 100px;
+        font-size: 2.5em;
+      }
+    }
+    ]]>
+  </b:skin>
+</head>
+<body>
+  <div class='container'>
+    <!-- Header Section -->
+    <div class='header'>
+      <h1>HTML Apps Portal</h1>
+      <p>আপনার প্রিয় ওয়েব অ্যাপ্লিকেশনগুলি এক জায়গায়</p>
+    </div>
+    
+    <!-- Apps Grid -->
+    <div class='apps-grid'>
+      <!-- Chat App -->
+      <div class='app-card'>
+        <a href='https://amitomarawal-cmyk.github.io/Html-Pages/A%20chat.html' target='_blank'>
+          <div class='app-icon'>💬</div>
+          <div class='app-content'>
+            <div class='app-name'>Chat</div>
+            <div class='app-desc'>রিয়েল-টাইম চ্যাট অ্যাপ্লিকেশন</div>
+            <span class='badge'>Communication</span>
+          </div>
+        </a>
+      </div>
+      
+      <!-- Chess Game -->
+      <div class='app-card'>
+        <a href='https://amitomarawal-cmyk.github.io/Html-Pages/Awal_Chess.html' target='_blank'>
+          <div class='app-icon'>♟️</div>
+          <div class='app-content'>
+            <div class='app-name'>Chess Game</div>
+            <div class='app-desc'>ইন্টারঅ্যাক্টিভ চেস খেলার অ্যাপ</div>
+            <span class='badge'>Games</span>
+          </div>
+        </a>
+      </div>
+      
+      <!-- Document Writer -->
+      <div class='app-card'>
+        <a href='https://amitomarawal-cmyk.github.io/Html-Pages/Docx%20Writer.html' target='_blank'>
+          <div class='app-icon'>📝</div>
+          <div class='app-content'>
+            <div class='app-name'>Docx Writer</div>
+            <div class='app-desc'>ডকুমেন্ট তৈরি এবং সম্পাদনা করুন</div>
+            <span class='badge'>Productivity</span>
+          </div>
+        </a>
+      </div>
+      
+      <!-- Drawing Pad -->
+      <div class='app-card'>
+        <a href='https://amitomarawal-cmyk.github.io/Html-Pages/DrowPad.html' target='_blank'>
+          <div class='app-icon'>🎨</div>
+          <div class='app-content'>
+            <div class='app-name'>Drawing Pad</div>
+            <div class='app-desc'>ডিজিটাল ড্রয়িং টুল</div>
+            <span class='badge'>Creative</span>
+          </div>
+        </a>
+      </div>
+      
+      <!-- Google Maps -->
+      <div class='app-card'>
+        <a href='https://amitomarawal-cmyk.github.io/Html-Pages/Google%20Maps.html' target='_blank'>
+          <div class='app-icon'>🗺️</div>
+          <div class='app-content'>
+            <div class='app-name'>Google Maps</div>
+            <div class='app-desc'>ম্যাপ এবং অবস্থান খুঁজুন</div>
+            <span class='badge'>Navigation</span>
+          </div>
+        </a>
+      </div>
+      
+      <!-- Keep Note -->
+      <div class='app-card'>
+        <a href='https://amitomarawal-cmyk.github.io/Html-Pages/Keep%20Note.html' target='_blank'>
+          <div class='app-icon'>📌</div>
+          <div class='app-content'>
+            <div class='app-name'>Keep Note</div>
+            <div class='app-desc'>দ্রুত নোট এবং তালিকা সংরক্ষণ করুন</div>
+            <span class='badge'>Notes</span>
+          </div>
+        </a>
+      </div>
+      
+      <!-- Notepad -->
+      <div class='app-card'>
+        <a href='https://amitomarawal-cmyk.github.io/Html-Pages/Notepad.html' target='_blank'>
+          <div class='app-icon'>✏️</div>
+          <div class='app-content'>
+            <div class='app-name'>Notepad</div>
+            <div class='app-desc'>টেক্সট এডিটিং টুল</div>
+            <span class='badge'>Text Editor</span>
+          </div>
+        </a>
+      </div>
+      
+      <!-- QR Code Scanner -->
+      <div class='app-card'>
+        <a href='https://amitomarawal-cmyk.github.io/Html-Pages/Qr%20Code%20Scanner.html' target='_blank'>
+          <div class='app-icon'>📱</div>
+          <div class='app-content'>
+            <div class='app-name'>QR Code Scanner</div>
+            <div class='app-desc'>QR কোড স্ক্যান এবং ডিকোড করুন</div>
+            <span class='badge'>Scanning</span>
+          </div>
+        </a>
+      </div>
+      
+      <!-- PDF Reader -->
+      <div class='app-card'>
+        <a href='https://amitomarawal-cmyk.github.io/Html-Pages/pdf-reader-offline.html' target='_blank'>
+          <div class='app-icon'>📄</div>
+          <div class='app-content'>
+            <div class='app-name'>PDF Reader</div>
+            <div class='app-desc'>অফলাইন PDF পড়ুন এবং দেখুন</div>
+            <span class='badge'>Documents</span>
+          </div>
+        </a>
+      </div>
+      
+      <!-- PDF Splitter -->
+      <div class='app-card'>
+        <a href='https://amitomarawal-cmyk.github.io/Html-Pages/pdf_splitter.html' target='_blank'>
+          <div class='app-icon'>✂️</div>
+          <div class='app-content'>
+            <div class='app-name'>PDF Splitter</div>
+            <div class='app-desc'>PDF ফাইল বিভক্ত করুন</div>
+            <span class='badge'>PDF Tools</span>
+          </div>
+        </a>
+      </div>
+      
+      <!-- Photo Compressor -->
+      <div class='app-card'>
+        <a href='https://amitomarawal-cmyk.github.io/Html-Pages/photo-compressor.html' target='_blank'>
+          <div class='app-icon'>🖼️</div>
+          <div class='app-content'>
+            <div class='app-name'>Photo Compressor</div>
+            <div class='app-desc'>ছবি সংকুচিত করুন এবং অপ্টিমাইজ করুন</div>
+            <span class='badge'>Image Tools</span>
+          </div>
+        </a>
+      </div>
+      
+      <!-- Photo to PDF -->
+      <div class='app-card'>
+        <a href='https://amitomarawal-cmyk.github.io/Html-Pages/photo-to-pdf.html' target='_blank'>
+          <div class='app-icon'>📸</div>
+          <div class='app-content'>
+            <div class='app-name'>Photo to PDF</div>
+            <div class='app-desc'>ছবিগুলিকে PDF-তে রূপান্তরিত করুন</div>
+            <span class='badge'>Conversion</span>
+          </div>
+        </a>
+      </div>
+      
+      <!-- Reader -->
+      <div class='app-card'>
+        <a href='https://amitomarawal-cmyk.github.io/Html-Pages/Reader.html' target='_blank'>
+          <div class='app-icon'>📖</div>
+          <div class='app-content'>
+            <div class='app-name'>Document Reader</div>
+            <div class='app-desc'>বিভিন্ন ফরম্যাটে ডকুমেন্ট পড়ুন</div>
+            <span class='badge'>Reading</span>
+          </div>
+        </a>
+      </div>
+      
+      <!-- Timer -->
+      <div class='app-card'>
+        <a href='https://amitomarawal-cmyk.github.io/Html-Pages/Timer.html' target='_blank'>
+          <div class='app-icon'>⏱️</div>
+          <div class='app-content'>
+            <div class='app-name'>Timer</div>
+            <div class='app-desc'>সময় ট্র্যাকিং এবং স্টপওয়াচ</div>
+            <span class='badge'>Utilities</span>
+          </div>
+        </a>
+      </div>
+      
+      <!-- Camera -->
+      <div class='app-card'>
+        <a href='https://amitomarawal-cmyk.github.io/Html-Pages/camera.html' target='_blank'>
+          <div class='app-icon'>📷</div>
+          <div class='app-content'>
+            <div class='app-name'>Camera</div>
+            <div class='app-desc'>ওয়েবক্যাম দিয়ে ছবি তুলুন</div>
+            <span class='badge'>Media</span>
+          </div>
+        </a>
+      </div>
+      
+      <!-- Islamic Calendar -->
+      <div class='app-card'>
+        <a href='https://amitomarawal-cmyk.github.io/Html-Pages/islamic-calendar-bd-offline.html' target='_blank'>
+          <div class='app-icon'>🌙</div>
+          <div class='app-content'>
+            <div class='app-name'>Islamic Calendar</div>
+            <div class='app-desc'>ইসলামিক ক্যালেন্ডার অফলাইন</div>
+            <span class='badge'>Calendar</span>
+          </div>
+        </a>
+      </div>
+      
+      <!-- Sun Position -->
+      <div class='app-card'>
+        <a href='https://amitomarawal-cmyk.github.io/Html-Pages/Sun%20position.html' target='_blank'>
+          <div class='app-icon'>☀️</div>
+          <div class='app-content'>
+            <div class='app-name'>Sun Position</div>
+            <div class='app-desc'>সূর্যের অবস্থান ট্র্যাক করুন</div>
+            <span class='badge'>Astronomy</span>
+          </div>
+        </a>
+      </div>
+      
+      <!-- Video Compressor -->
+      <div class='app-card'>
+        <a href='https://amitomarawal-cmyk.github.io/Html-Pages/video-compressor.html' target='_blank'>
+          <div class='app-icon'>🎬</div>
+          <div class='app-content'>
+            <div class='app-name'>Video Compressor</div>
+            <div class='app-desc'>ভিডিও ফাইল সংকুচিত করুন</div>
+            <span class='badge'>Video Tools</span>
+          </div>
+        </a>
+      </div>
+      
+      <!-- Weather -->
+      <div class='app-card'>
+        <a href='https://amitomarawal-cmyk.github.io/Html-Pages/weather.html' target='_blank'>
+          <div class='app-icon'>🌤️</div>
+          <div class='app-content'>
+            <div class='app-name'>Weather</div>
+            <div class='app-desc'>আপনার এলাকার আবহাওয়া দেখুন</div>
+            <span class='badge'>Information</span>
+          </div>
+        </a>
+      </div>
+    </div>
+    
+    <!-- Footer -->
+    <div class='footer'>
+      <p>&copy; 2026 HTML Apps Portal | All rights reserved | Developed by Amit Amarwal</p>
+    </div>
+  </div>
+</body>
+</html>
