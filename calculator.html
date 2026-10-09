@@ -398,7 +398,21 @@ case'solve':solveEq();break;
 case'ac':tokens=[];cur=0;res='';fresh=0;view=dv0();l1note='';pend=null;break;
 case'del':if(/ERROR/.test(res))res='';if(fresh){fresh=0;res=''}else if(cur>0){tokens.splice(cur-1,1);cur--}break;
 case'left':if(/ERROR/.test(res))res='';if(fresh){fresh=0;res=''}cur=Math.max(0,cur-1);break;
-case'right':if(/ERROR/.test(res))res='';if(fresh){fresh=0;res=''}cur=Math.min(tokens.length,cur+1);break;
+case'right':
+ if(/ERROR/.test(res))res='';
+ if(fresh){fresh=0;res=''}
+ /* Right arrow jumps to the expression's end. If the user is still inside
+    a square-root group, close that group so typing can continue outside it. */
+ if(cur>=tokens.length){
+  const stack=[];
+  for(let i=0;i<tokens.length;i++){
+   if(tokens[i]==='√('||tokens[i]==='³√('||tokens[i]==='(')stack.push({i,t:tokens[i]});
+   else if(tokens[i]===')'&&stack.length)stack.pop();
+  }
+  const openRoot=stack.some(x=>x.t==='√('||x.t==='³√(');
+  if(openRoot){tokens.splice(cur,0,')');cur++}
+ }else{cur=tokens.length}
+ break;
 case'up':if(hist.length){hi=Math.max(0,hi-1);tokens=[...hist[hi]];cur=tokens.length;res='';fresh=0}break;
 case'down':if(hist.length&&hi<hist.length-1){hi++;tokens=[...hist[hi]];cur=tokens.length;res='';fresh=0}break;
 case'hyp':hyp=!hyp;break;
