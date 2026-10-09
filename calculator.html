@@ -1,0 +1,500 @@
+<!DOCTYPE html>
+<html lang="bn"><head><meta charset="utf-8"><title>FC-100MS Scientific Calculator</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);--bg:#e8eaee}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#15171a}}
+:root[data-theme="dark"]{--bg:#15171a}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;background:#454b54;font-family:system-ui,Arial,sans-serif;padding:0}
+#calc{width:100%;min-height:100%;display:flex;flex-direction:column;background:linear-gradient(#5a616b,#454b54);padding:0 8px 8px}
+#rows{flex:1;display:flex;flex-direction:column;min-height:0}
+#top{background:#0c0c0e;margin:0 -8px 8px;padding:5px 10px;display:flex;justify-content:space-between;align-items:center;color:#fff}
+#logo{background:#d8232a;font:italic 700 13px Arial;padding:1px 8px}
+#model{font:600 13px Arial}
+#sci{display:none}
+#lcd{background:#cdd6d2;border:3px solid #222;border-radius:5px;margin:0 0 4px;padding:3px 8px 6px;color:#18241d;height:84px;box-shadow:inset 0 2px 6px #0006;position:relative}
+#ind{display:flex;gap:7px;font:700 8px monospace;height:11px;opacity:.95}
+#ind span{opacity:.15}#ind span.on{opacity:1}
+#l1{font:600 18px "Courier New",monospace;height:24px;white-space:nowrap;overflow:hidden}
+#l2{font:700 28px "Courier New",monospace;text-align:right;height:34px;white-space:nowrap;overflow:hidden}
+#l2 small{font-size:11px}#l2 sup{font-size:12px;vertical-align:top;position:relative;top:-3px}
+#l2 .mn{display:block;text-align:left;font-size:11px;line-height:34px;white-space:nowrap}
+.c{display:inline-block;width:2px;height:17px;background:#18241d;vertical-align:-3px;animation:bl 1s steps(1) infinite}
+@keyframes bl{50%{opacity:0}}
+.row{display:grid;gap:0 6px;margin-top:15px;flex:1;min-height:34px}
+.r6{grid-template-columns:repeat(6,1fr)}.r5{grid-template-columns:repeat(5,1fr)}
+.k{position:relative;border:0;border-radius:9px;height:100%;min-height:32px;font:700 13px system-ui;color:#fff;background:linear-gradient(#34343a,#111113);box-shadow:0 3px 0 #000;cursor:pointer;padding:0;user-select:none;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+.k:active{transform:translateY(2px);box-shadow:0 1px 0 #000}
+.k i{position:absolute;top:-13px;font:600 9px system-ui;font-style:normal;white-space:nowrap}
+.k .s{left:1px;color:#f2b83c}.k .a{right:1px;color:#ff6a98}
+.n{background:linear-gradient(#cfd2d8,#9ea4ae);color:#1c1c1e;font-size:17px}
+.r{background:linear-gradient(#e0455a,#b02438);font-size:14px}
+.t{background:linear-gradient(#cfd2d8,#9ea4ae);color:#222;height:26px;min-height:0;border-radius:14px;font-size:10px}
+.k.on{outline:2px solid #f2b83c}.k.alp.on{outline-color:#ff6a98}
+#h{display:grid;grid-template-columns:1fr 1fr 62px 1fr 1fr;gap:6px;align-items:center}
+#pad{width:58px;height:58px;margin:0 auto;border-radius:50%;background:radial-gradient(#e7e9ec,#b5bac2);box-shadow:0 3px 0 #000;text-align:center;font:700 8px system-ui;padding-top:16px;cursor:pointer;user-select:none;position:relative;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+#pad b{display:block;color:#d9a820}#pad span{color:#555}
+#h .grp{display:flex;flex-direction:column;align-items:center}
+.lab{font:600 9px system-ui;color:#f2b83c;margin-bottom:3px}
+.sp{visibility:hidden}
+#l1{position:relative}
+#lcd.math{height:138px}
+#lcd.math #l1,#lcd.math #l2{font-family:"Cambria Math","Times New Roman",Georgia,serif;font-weight:700}
+#lcd.math #l1{height:58px;font-size:22px;line-height:58px}
+#lcd.math #l2{height:54px;font-size:26px;line-height:54px}
+#lcd.math .c{vertical-align:middle;height:24px}
+#lcd.math .mn{line-height:54px}
+#l2 .mn.sm{font-size:10px}
+.fr{display:inline-flex;flex-direction:column;vertical-align:middle;text-align:center;line-height:1.15;margin:0 3px}
+.fr>span{display:block;padding:0 3px;line-height:1.15}.fr>span:first-child{border-bottom:2px solid #18241d}
+.rd{display:inline-flex;align-items:stretch;vertical-align:middle;line-height:1.15;white-space:nowrap}
+.rd>.rs{font-size:1.25em;display:flex;align-items:center;padding-right:1px}
+.rb{display:inline-block;border-top:2px solid #18241d;padding:2px 2px 0;line-height:1.15}
+#lcd sup.e{font-size:.62em;vertical-align:top;position:relative;top:-.45em;line-height:0}
+.ph{display:inline-block;min-width:9px;height:16px;border:1px dashed #18241d;vertical-align:middle;margin:0 1px}
+#lcd .katex{font-size:1.12em;white-space:nowrap}
+#lcd.math #l2 .katex{font-size:1.2em}
+.kc{display:inline-block;animation:bl 1s steps(1) infinite}
+</style></head><body>
+<div id="calc">
+ <div id="top"><div id="logo">Flair</div><div id="model">FC-100MS</div><div id="sci">SCIENTIFIC CALCULATOR</div></div>
+ <div id="lcd"><div id="ind"><span id="iS">S</span><span id="iA">A</span><span id="iM">M</span><span id="iSTO">STO</span><span id="iRCL">RCL</span><span id="iH">HYP</span><span id="iD">D</span><span id="iR">R</span><span id="iG">G</span><span id="iE">ENG</span><span id="iMath">Math</span></div><div id="l1"></div><div id="l2">0</div></div>
+ <div id="h"><div class="grp" id="bS"></div><div class="grp" id="bA"></div><div id="pad"><b>COPY</b><span>REPLAY</span></div><div class="grp" id="bM"></div><div class="grp" id="bO"></div></div>
+ <div id="rows"></div>
+</div>
+<script>
+const $=id=>document.getElementById(id);
+let tokens=[],cur=0,shift=0,alpha=0,hyp=0,mode='D',ans=0,pend=null,menu=null,fresh=0,res='0',view='dec',eng=0,off=0,hist=[],hi=0,l1note='';
+const vars={A:0,B:0,C:0,D:0,E:0,F:0,X:0,Y:0,M:0};
+const disp={nPr:'P',nCr:'C',RAN:'Ran#'};
+class SynErr extends Error{}
+const cfg={disp:'line'},KEY='fc100ms_state_v2';
+const dv0=()=>cfg.disp==='math'?'exact':'dec';
+function save(){try{localStorage.setItem(KEY,JSON.stringify({disp:cfg.disp,mode,eng,ans,vars,hist:hist.slice(-50)}))}catch(e){}}
+function load(){try{const d=JSON.parse(localStorage.getItem(KEY)||'null');if(!d)return;
+ if(d.disp==='math'||d.disp==='line')cfg.disp=d.disp;
+ if(['D','R','G'].includes(d.mode))mode=d.mode;
+ eng=d.eng?1:0;
+ if(Number.isFinite(d.ans))ans=d.ans;
+ if(d.vars)for(const k in vars)if(Number.isFinite(d.vars[k]))vars[k]=d.vars[k];
+ if(Array.isArray(d.hist))hist=d.hist.filter(h=>Array.isArray(h)&&h.every(t=>typeof t==='string')).slice(-50);
+ hi=hist.length}catch(e){}}
+function resetAll(){try{localStorage.removeItem(KEY)}catch(e){}
+ tokens=[];cur=0;shift=0;alpha=0;hyp=0;mode='D';ans=0;pend=null;menu=null;fresh=0;res='0';eng=0;off=0;hist=[];hi=0;l1note='';cfg.disp='line';view=dv0();
+ Object.keys(vars).forEach(k=>vars[k]=0)}
+const SETUP=[
+{n:()=>'Disp:'+(cfg.disp==='math'?'Math':'Line'),f:()=>{cfg.disp=cfg.disp==='math'?'line':'math';view=dv0();if(fresh&&!/^[A-FXYM]=/.test(res)&&!/ERROR/.test(res))showAns()}},
+{n:()=>'Ang:'+({D:'Deg',R:'Rad',G:'Gra'})[mode],f:()=>{mode=mode==='D'?'R':mode==='R'?'G':'D'}},
+{n:()=>'ENG:'+(eng?'on':'off'),f:()=>{eng=eng?0:1;if(fresh)showAns()}},
+{n:()=>'ClrHist',f:()=>{menu={type:'confirm',what:'hist'}}},
+{n:()=>'Reset',f:()=>{menu={type:'confirm',what:'all'}}}];
+function menuItems(){return menu.type==='const'?CONSTS.map(c=>c.n):menu.type==='conv'?CONVS.map(c=>c.n):menu.type==='setup'?SETUP.map(x=>x.n()):['Yes','No']}
+
+/* ---------- constants & conversions ---------- */
+const CONSTS=[
+{n:'c',v:299792458},{n:'h',v:6.62607015e-34},{n:'e',v:1.602176634e-19},{n:'NA',v:6.02214076e23},{n:'g',v:9.80665},
+{n:'k',v:1.380649e-23},{n:'R',v:8.314462618},{n:'G',v:6.6743e-11},{n:'me',v:9.1093837015e-31},{n:'mp',v:1.67262192369e-27},
+{n:'mn',v:1.67492749804e-27},{n:'ε0',v:8.8541878128e-12},{n:'μ0',v:1.25663706212e-6},{n:'ħ',v:1.054571817e-34},{n:'a0',v:5.29177210903e-11},
+{n:'F',v:96485.33212},{n:'σ',v:5.670374419e-8},{n:'Vm',v:0.022413969545},{n:'atm',v:101325},{n:'u',v:1.6605390666e-27}];
+const mul=k=>v=>v*k,dv=k=>v=>v/k;
+const CONVS=[
+{n:'in▶cm',f:mul(2.54)},{n:'cm▶in',f:dv(2.54)},{n:'ft▶m',f:mul(0.3048)},{n:'m▶ft',f:dv(0.3048)},{n:'mi▶km',f:mul(1.609344)},
+{n:'km▶mi',f:dv(1.609344)},{n:'yd▶m',f:mul(0.9144)},{n:'m▶yd',f:dv(0.9144)},{n:'lb▶kg',f:mul(0.45359237)},{n:'kg▶lb',f:dv(0.45359237)},
+{n:'oz▶g',f:mul(28.349523125)},{n:'g▶oz',f:dv(28.349523125)},{n:'gal▶L',f:mul(3.785411784)},{n:'L▶gal',f:dv(3.785411784)},{n:'°F▶°C',f:v=>(v-32)*5/9},
+{n:'°C▶°F',f:v=>v*9/5+32},{n:'°C▶K',f:v=>v+273.15},{n:'K▶°C',f:v=>v-273.15},{n:'atm▶Pa',f:mul(101325)},{n:'Pa▶atm',f:dv(101325)},
+{n:'cal▶J',f:mul(4.184)},{n:'J▶cal',f:dv(4.184)},{n:'hp▶W',f:mul(745.69987158)},{n:'W▶hp',f:dv(745.69987158)},{n:'kmh▶ms',f:dv(3.6)}];
+
+/* ---------- math helpers ---------- */
+const af=()=>mode==='D'?Math.PI/180:mode==='G'?Math.PI/200:1;
+const cl=x=>Math.round(x*1e12)/1e12;
+const FACT=n=>{if(!Number.isInteger(n)||n<0||n>69)return NaN;let r=1;for(let i=2;i<=n;i++)r*=i;return r};
+const NPR=(n,r)=>{if(!Number.isInteger(n)||!Number.isInteger(r)||r<0||n<r)return NaN;let p=1;for(let i=0;i<r;i++)p*=n-i;return p};
+const NCR=(n,r)=>{if(!Number.isInteger(n)||!Number.isInteger(r)||r<0||n<r)return NaN;r=Math.min(r,n-r);let c=1;for(let i=1;i<=r;i++)c=c*(n-r+i)/i;return c<1e15?Math.round(c):c};
+const ROOT=(n,v)=>{if(n===0||!Number.isFinite(n))return NaN;if(v<0)return(Number.isInteger(n)&&Math.abs(n%2)===1)?-Math.pow(-v,1/n):NaN;return Math.pow(v,1/n)};
+const INTEG=(g,a,b)=>{const n=1000,h=(b-a)/n;let s=g(a)+g(b);for(let i=1;i<n;i++)s+=g(a+i*h)*(i%2?4:2);return s*h/3};
+const DERIV=(g,x)=>{const h=1e-3*Math.max(1,Math.abs(x));return(-g(x+2*h)+8*g(x+h)-8*g(x-h)+g(x-2*h))/(12*h)};
+const FNS={
+sin:v=>cl(Math.sin(v*af())),cos:v=>cl(Math.cos(v*af())),
+tan:v=>{const a=v*af();return Math.abs(Math.cos(a))<1e-12?NaN:cl(Math.tan(a))},
+asin:v=>Math.asin(v)/af(),acos:v=>Math.acos(v)/af(),atan:v=>Math.atan(v)/af(),
+sinh:Math.sinh,cosh:Math.cosh,tanh:Math.tanh,asinh:Math.asinh,acosh:Math.acosh,atanh:Math.atanh,
+sqrt:Math.sqrt,cbrt:Math.cbrt,log10:Math.log10,ln:Math.log,p10:v=>Math.pow(10,v),exp:Math.exp};
+const FN={'√(':'sqrt','³√(':'cbrt','log(':'log10','ln(':'ln','10^(':'p10','e^(':'exp'};
+['sin','cos','tan'].forEach(n=>{FN[n+'(']=n;FN[n+'h(']=n+'h';FN[n+'⁻¹(']='a'+n;FN[n+'h⁻¹(']='a'+n+'h'});
+
+/* ---------- recursive-descent parser: tokens -> closure f(x) (x overrides variable X) ---------- */
+function parse(tk){
+ let p=0;
+ const peek=()=>tk[p],isNum=t=>t!==undefined&&/^[0-9.]$/.test(t);
+ const startsPrimary=t=>t!==undefined&&(isNum(t)||t==='('||/\($/.test(t)||/^(π|e|Ans|RAN)$/.test(t)||/^[A-FXYM]$/.test(t));
+ const close=()=>{if(peek()===')')p++;else if(p<tk.length)throw new SynErr()};
+ const comma=()=>{if(peek()===',')p++;else throw new SynErr()};
+ function add(){let l=mul_();while(peek()==='+'||peek()==='−'){const o=tk[p++],r=mul_(),a=l;l=o==='+'?x=>a(x)+r(x):x=>a(x)-r(x)}return l}
+ function mul_(){let l=perm();for(;;){const t=peek();let o;
+  if(t==='×'||t==='÷'){p++;o=t}else if(startsPrimary(t))o='×';else break;
+  const r=perm(),a=l;l=o==='×'?x=>a(x)*r(x):x=>a(x)/r(x)}return l}
+ function perm(){let l=unary();while(/^(nPr|nCr|ˣ√)$/.test(peek()||'')){const o=tk[p++],r=unary(),a=l;
+  l=o==='nPr'?x=>NPR(a(x),r(x)):o==='nCr'?x=>NCR(a(x),r(x)):x=>ROOT(a(x),r(x))}return l}
+ function unary(){const t=peek();if(t==='−'){p++;const u=unary();return x=>-u(x)}if(t==='+'){p++;return unary()}return power()}
+ function power(){const b=postfix();if(peek()==='^'){p++;const e=powExp();return x=>Math.pow(b(x),e(x))}return b}
+ function powExp(){if(peek()==='−'){p++;const u=powExp();return x=>-u(x)}if(peek()==='+'){p++;return powExp()}return power()}
+ function postfix(){let v=primary();for(;;){const t=peek(),a=v;
+  if(t==='²'){p++;v=x=>a(x)*a(x)}
+  else if(t==='³'){p++;v=x=>Math.pow(a(x),3)}
+  else if(t==='⁻¹'){p++;v=x=>1/a(x)}
+  else if(t==='!'){p++;v=x=>FACT(a(x))}
+  else if(t==='%'){p++;v=x=>a(x)/100}
+  else if(t==='ᴇ'){p++;let s=1;if(peek()==='−'){p++;s=-1}else if(peek()==='+')p++;
+   let d='';while(isNum(peek()))d+=tk[p++];if(!d||isNaN(+d))throw new SynErr();const n=s*+d;v=x=>a(x)*Math.pow(10,n)}
+  else break}return v}
+ function primary(){const t=tk[p];if(t===undefined)throw new SynErr();
+  if(isNum(t)){let d='';while(isNum(peek()))d+=tk[p++];if((d.match(/\./g)||[]).length>1||d==='.')throw new SynErr();const n=+d;return()=>n}
+  p++;
+  if(t==='π')return()=>Math.PI;
+  if(t==='e')return()=>Math.E;
+  if(t==='Ans')return()=>ans;
+  if(t==='RAN')return()=>Math.floor(Math.random()*1000)/1000;
+  if(/^[A-FXYM]$/.test(t))return x=>x&&t in x?x[t]:vars[t];
+  if(t==='('){const e=add();close();return e}
+  if(t==='∫('){const g=add();comma();const a=add();comma();const b=add();close();return x=>INTEG(y=>g(Object.assign({},x,{X:y})),a(x),b(x))}
+  if(t==='d/dx('){const f=add();comma();const pt=add();close();return x=>DERIV(y=>f(Object.assign({},x,{X:y})),pt(x))}
+  if(FN[t]){const e=add();close();const f=FNS[FN[t]];return x=>f(e(x))}
+  throw new SynErr()}
+ const r=add();if(p<tk.length)throw new SynErr();return r}
+
+/* ---------- display formatting ---------- */
+function sci(m,e){return (+(+m).toPrecision(10))+'<small>×10</small><sup>'+(e<0?'-':'')+String(Math.abs(e)).padStart(2,'0')+'</sup>'}
+function fmt(v){if(v===0)return'0';const a=Math.abs(v);
+if(eng){const e=Math.floor(Math.log10(a)/3)*3;return sci(v/10**e,e)}
+const sg=+v.toPrecision(10);if(a>=1e10||a<1e-9){let[m,e]=v.toExponential(9).split('e');return sci(m,+e)}
+let s=sg.toFixed(Math.min(20,Math.max(0,9-Math.floor(Math.log10(a)))));if(s.includes('.'))s=s.replace(/\.?0+$/,'');return s}
+function dms(v){const n=v<0?'-':'',a=Math.abs(v);let d=Math.floor(a),r=(a-d)*60,m=Math.floor(r+1e-9),s=+((r-m)*60).toFixed(4);if(s>=60){s=0;m++}if(m>=60){m=0;d++}return n+d+'°'+m+'′'+s+'″'}
+function fr(v,mixed){if(Number.isInteger(v))return fmt(v);const sg=v<0?'-':'',a=Math.abs(v),w=mixed?Math.floor(a):0,x=a-w;let h1=1,h0=0,k1=0,k0=1,y=x,n,d;
+for(let i=0;i<20;i++){const q=Math.floor(y);n=q*h1+h0;d=q*k1+k0;h0=h1;h1=n;k0=k1;k1=d;if(Math.abs(x-n/d)<1e-10)break;y=1/(y-q)}
+if(d>999||Math.abs(x-n/d)>1e-8)return fmt(v);return sg+(w?w+'⌟':'')+n+'⌟'+d}
+function showAns(){
+ if(cfg.disp==='math'&&window.katex&&!eng&&(view==='exact'||view==='mixed')){
+  try{const t=view==='exact'?exactTex(ans):mixedTex(ans);if(t){res=ktx(t);return}}catch(e){}}
+ res=view==='exact'&&!eng?exact(ans):view==='mixed'&&cfg.disp==='math'?mixedHTML(ans):view==='frac'?fr(ans):view==='mixed'?fr(ans,1):view==='dms'?dms(ans):fmt(ans)}
+
+/* ---------- Math (natural) display ---------- */
+/* ---------- LaTeX (KaTeX) renderer ---------- */
+const ktx=t=>katex.renderToString(t,{throwOnError:false,trust:true,strict:false});
+function rtex(tk,cursor){
+ let p=0,placed=false,dp=0;
+ const cr=i=>{if(i===cursor&&!placed){placed=true;return'\\htmlClass{kc}{\\rule[-0.3em]{1.5px}{1.2em}}'}return''};
+ const isNum=t=>t!==undefined&&/^[0-9.]$/.test(t);
+ const sp=t=>t!==undefined&&(isNum(t)||t==='('||/\($/.test(t)||/^(π|e|Ans|RAN)$/.test(t)||/^[A-FXYM]$/.test(t));
+ const frac=(a,b)=>'\\frac{'+a+'}{'+b+'}';
+ const rad=(h,idx)=>idx?'\\sqrt['+idx+']{'+h+'}':'\\sqrt{'+h+'}';
+ const supt=(b,e)=>'{'+b+'}^{'+e+'}';
+ const req=f=>{dp++;try{return f()}finally{dp--}};
+ const ec=()=>{if(tk[p]===')'){const c=cr(p);p++;return[c,1]}return['',0]};
+ const paren=(b,e,h)=>'\\left('+b+e+(h?'\\right)':'\\right.');
+ const texOf=t=>({'π':'\\pi','e':'e','Ans':'\\mathrm{Ans}','RAN':'\\mathrm{Ran\\#}','×':'\\times ','÷':'\\div ','−':'-','%':'\\%','ᴇ':'\\mathrm{E}','nPr':'\\mathrm{P}','nCr':'\\mathrm{C}','ˣ√':'\\sqrt[x]{}'})[t]||t;
+ function add(){let o=mul();while(tk[p]==='+'||tk[p]==='−'){const i=p++;o+=cr(i)+(tk[i]==='−'?'-':'+')+mul()}return o}
+ function mul(){const parts=[perm()];
+  for(;;){const t=tk[p];
+   if(t==='×'){const i=p++;parts.push(cr(i)+'\\times ');parts.push(perm())}
+   else if(t==='÷'){const i=p++;const last=parts.pop()+cr(i);const r=req(perm);parts.push(frac(last,r))}
+   else if(sp(t))parts.push(perm());
+   else break}
+  return parts.join('')}
+ function perm(){let l=unary();while(/^(nPr|nCr|ˣ√)$/.test(tk[p]||'')){const i=p++,o=tk[i],r=unary();
+  l=o==='ˣ√'?rad(r,l+cr(i)):l+cr(i)+(o==='nPr'?'\\mathrm{P}':'\\mathrm{C}')+r}return l}
+ function unary(){const t=tk[p];if(t==='−'||t==='+'){const i=p++;return cr(i)+(t==='−'?'-':'+')+unary()}return power()}
+ function power(){const b=postfix();if(tk[p]==='^'){const i=p++;return supt(b+cr(i),req(powExp))}return b}
+ function powExp(){const t=tk[p];if(t==='−'||t==='+'){const i=p++;return cr(i)+(t==='−'?'-':'+')+powExp()}return power()}
+ function postfix(){let v=primary();for(;;){const t=tk[p],i=p;
+  if(t==='²'||t==='³'){p++;v=supt(v+cr(i),t==='²'?'2':'3')}
+  else if(t==='⁻¹'){p++;v=supt(v+cr(i),'-1')}
+  else if(t==='!'){p++;v+=cr(i)+'!'}
+  else if(t==='%'){p++;v+=cr(i)+'\\%'}
+  else if(t==='ᴇ'){p++;let e='';if(tk[p]==='−'){e+=cr(p)+'-';p++}else if(tk[p]==='+')p++;
+   while(isNum(tk[p])){e+=cr(p)+tk[p];p++}v+=cr(i)+'\\times 10^{'+e+'}'}
+  else break}return v}
+ function args(){const a=[req(add)];while(tk[p]===','){a.push(cr(p)+',');p++;a.push(req(add))}return a.join('')}
+ function primary(){const i=p,t=tk[p];
+  if(t===undefined)return dp>0?cr(i)+'\\square ':cr(i);
+  if(isNum(t)){let h='';while(isNum(tk[p])){h+=cr(p)+tk[p];p++}return h}
+  p++;const c=cr(i);
+  if(t==='('){const b=req(add),[e,h]=ec();return c+paren(b,e,h)}
+  if(t==='√('){const b=req(add),[e]=ec();return c+rad(b+e)}
+  if(t==='³√('){const b=req(add),[e]=ec();return c+rad(b+e,'3')}
+  if(t==='e^('){const b=req(add),[e]=ec();return c+'e^{'+b+e+'}'}
+  if(t==='10^('){const b=req(add),[e]=ec();return c+'10^{'+b+e+'}'}
+  if(t==='∫('){const b=args(),[e,h]=ec();return c+'\\int'+paren(b,e,h)}
+  if(t==='d/dx('){const b=args(),[e,h]=ec();return c+'\\frac{d}{dx}'+paren(b,e,h)}
+  if(FN[t]){let n=t.slice(0,-1);const inv=n.endsWith('⁻¹');if(inv)n=n.slice(0,-2);const b=args(),[e,h]=ec();
+   return c+'\\'+n+(inv?'^{-1}':'')+paren(b,e,h)}
+  return c+texOf(t)}
+ let out=add();
+ while(p<tk.length){const i=p,t=tk[p++];out+=cr(i)+texOf(t);if(p<tk.length)out+=add()}
+ if(!placed&&cursor>=tk.length)out+=cr(cursor);
+ return out}
+function exactTex(v){
+ if(!Number.isFinite(v)||(Number.isInteger(v)&&Math.abs(v)<1e10))return null;
+ const a=Math.abs(v),sg=v<0?'-':'';if(a<1e-9||a>1e9)return null;
+ const F=(n,d)=>d===1?sg+n:sg+'\\frac{'+n+'}{'+d+'}';
+ let r=ratApprox(a,1000);if(r)return F(r[0],r[1]);
+ r=ratApprox(a/Math.PI,120);
+ if(r&&r[0]<=10000&&r[0]>0)return F((r[0]===1?'':r[0])+'\\pi',r[1]);
+ r=ratApprox(a*a,1000);
+ if(r&&r[0]<=1e6){let m=r[0]*r[1],sq=1;for(let i=2;i*i<=m;i++)while(m%(i*i)===0){sq*=i;m/=i*i}
+  if(m>1){let d=r[1];const g=gcd(sq,d);sq/=g;d/=g;return F((sq===1?'':sq)+'\\sqrt{'+m+'}',d)}}
+ return null}
+function mixedTex(v){const a=Math.abs(v),sg=v<0?'-':'',r=ratApprox(a,1000);
+ if(!r||r[1]===1)return exactTex(v);const w=Math.floor(r[0]/r[1]),n=r[0]-w*r[1];return sg+(w||'')+'\\frac{'+n+'}{'+r[1]+'}'}
+function rmath(tk,cursor){
+ let p=0,placed=false,dp=0;
+ const cr=i=>{if(i===cursor&&!placed){placed=true;return'<b class=c></b>'}return''};
+ const isNum=t=>t!==undefined&&/^[0-9.]$/.test(t);
+ const sp=t=>t!==undefined&&(isNum(t)||t==='('||/\($/.test(t)||/^(π|e|Ans|RAN)$/.test(t)||/^[A-FXYM]$/.test(t));
+ const sup=h=>'<sup class=e>'+h+'</sup>';
+ const frac=(a,b)=>'<span class=fr><span>'+a+'</span><span>'+b+'</span></span>';
+ const rad=(h,idx)=>'<span class=rd>'+(idx||'')+'<span class=rs>√</span><span class=rb>'+h+'</span></span>';
+ const req=f=>{dp++;try{return f()}finally{dp--}};
+ const ec=()=>{if(tk[p]===')'){const c=cr(p);p++;return[c,1]}return['',0]};
+ function add(){let o=mul();while(tk[p]==='+'||tk[p]==='−'){const i=p++;o+=cr(i)+tk[i]+mul()}return o}
+ function mul(){const parts=[perm()];
+  for(;;){const t=tk[p];
+   if(t==='×'){const i=p++;parts.push(cr(i)+'×');parts.push(perm())}
+   else if(t==='÷'){const i=p++;const last=parts.pop()+cr(i);const r=req(perm);parts.push(frac(last,r))}
+   else if(sp(t))parts.push(perm());
+   else break}
+  return parts.join('')}
+ function perm(){let l=unary();while(/^(nPr|nCr|ˣ√)$/.test(tk[p]||'')){const i=p++,o=tk[i],r=unary();
+  l=o==='ˣ√'?sup(l)+cr(i)+rad(r):l+cr(i)+(o==='nPr'?'P':'C')+r}return l}
+ function unary(){const t=tk[p];if(t==='−'||t==='+'){const i=p++;return cr(i)+t+unary()}return power()}
+ function power(){const b=postfix();if(tk[p]==='^'){const i=p++;return b+cr(i)+sup(req(powExp))}return b}
+ function powExp(){const t=tk[p];if(t==='−'||t==='+'){const i=p++;return cr(i)+t+powExp()}return power()}
+ function postfix(){let v=primary();for(;;){const t=tk[p],i=p;
+  if(t==='²'||t==='³'){p++;v+=cr(i)+sup(t==='²'?'2':'3')}
+  else if(t==='⁻¹'){p++;v+=cr(i)+sup('−1')}
+  else if(t==='!'||t==='%'){p++;v+=cr(i)+t}
+  else if(t==='ᴇ'){p++;let e='';if(tk[p]==='−'){e+=cr(p)+'−';p++}else if(tk[p]==='+')p++;
+   while(isNum(tk[p])){e+=cr(p)+tk[p];p++}v+=cr(i)+'×10'+sup(e)}
+  else break}return v}
+ function args(){const a=[req(add)];while(tk[p]===','){a.push(cr(p)+',');p++;a.push(req(add))}return a.join('')}
+ function primary(){const i=p,t=tk[p];
+  if(t===undefined)return dp>0?'<span class=ph>'+cr(i)+'</span>':cr(i);
+  if(isNum(t)){let h='';while(isNum(tk[p])){h+=cr(p)+tk[p];p++}return h}
+  p++;const c=cr(i);
+  if(t==='('){const b=req(add),[e,h]=ec();return c+'('+b+e+(h?')':'')}
+  if(t==='√('){const b=req(add),[e]=ec();return c+rad(b+e)}
+  if(t==='³√('){const b=req(add),[e]=ec();return c+rad(b+e,sup('3'))}
+  if(t==='e^('){const b=req(add),[e]=ec();return c+'e'+sup(b+e)}
+  if(t==='10^('){const b=req(add),[e]=ec();return c+'10'+sup(b+e)}
+  if(FN[t]||t==='∫('||t==='d/dx('){const b=args(),[e,h]=ec();return c+t+b+e+(h?')':'')}
+  return c+(disp[t]||t)}
+ let out=add();
+ while(p<tk.length){const i=p,t=tk[p++];out+=cr(i)+(disp[t]||t);if(p<tk.length)out+=add()}
+ if(!placed&&cursor>=tk.length)out+='<b class=c></b>';
+ return out}
+const gcd=(a,b)=>b?gcd(b,a%b):a;
+function ratApprox(x,dm){let h1=1,h0=0,k1=0,k0=1,y=x;const tol=1e-11*Math.max(1,x);
+ for(let i=0;i<40;i++){const q=Math.floor(y),n=q*h1+h0,d=q*k1+k0;if(d>dm)return null;h0=h1;h1=n;k0=k1;k1=d;if(Math.abs(x-n/d)<=tol)return[n,d];const f=y-q;if(f<1e-13)return null;y=1/f}
+ return null}
+const mfrac=(a,b)=>'<span class=fr><span>'+a+'</span><span>'+b+'</span></span>';
+function exact(v){
+ if(!Number.isFinite(v))return fmt(v);
+ if(Number.isInteger(v)&&Math.abs(v)<1e10)return fmt(v);
+ const a=Math.abs(v),sg=v<0?'−':'';if(a<1e-9||a>1e9)return fmt(v);
+ let r=ratApprox(a,1000);
+ if(r)return r[1]===1?sg+r[0]:sg+mfrac(r[0],r[1]);
+ r=ratApprox(a/Math.PI,120);
+ if(r&&r[0]<=10000&&r[0]>0){const n=(r[0]===1?'':r[0])+'π';return r[1]===1?sg+n:sg+mfrac(n,r[1])}
+ r=ratApprox(a*a,1000);
+ if(r&&r[0]<=1e6){let m=r[0]*r[1],sq=1;for(let i=2;i*i<=m;i++)while(m%(i*i)===0){sq*=i;m/=i*i}
+  if(m>1){let d=r[1];const g=gcd(sq,d);sq/=g;d/=g;
+   const n=(sq===1?'':sq)+'<span class=rd><span class=rs>√</span><span class=rb>'+m+'</span></span>';
+   return d===1?sg+n:sg+mfrac(n,d)}}
+ return fmt(v)}
+function mixedHTML(v){const a=Math.abs(v),sg=v<0?'−':'',r=ratApprox(a,1000);
+ if(!r||r[1]===1)return exact(v);const w=Math.floor(r[0]/r[1]),n=r[0]-w*r[1];return sg+(w||'')+mfrac(n,r[1])}
+
+/* ---------- core ---------- */
+function ins(t){res='';l1note='';if(fresh){tokens=/^(\+|−|×|÷|\^|²|³|⁻¹|%|!|nPr|nCr|ˣ√)$/.test(t)?['Ans']:[];cur=tokens.length;fresh=0}tokens.splice(cur,0,t);cur++}
+function val(tk){const v=parse(tk||tokens)();if(typeof v!=='number'||!Number.isFinite(v))throw 0;return v}
+function pushHist(){const k=tokens.join('\u0001');if(!hist.length||hist[hist.length-1].join('\u0001')!==k)hist.push([...tokens]);hi=hist.length}
+function doEq(){if(!tokens.length)return;if(tokens.includes('='))return solveEq();const v=val();ans=v;view=dv0();showAns();pushHist();fresh=1}
+
+/* Newton-Raphson with damping, derivative fallbacks, multi-start, bisection fallback, iteration/time limits */
+function solveEq(){
+ const i=tokens.indexOf('=');if(i<0||tokens.indexOf('=',i+1)>=0)throw new SynErr();
+ const used=tokens.filter(t=>/^[A-FXYM]$/.test(t)),sv=used.includes('X')?'X':used[0];if(!sv)throw 0;
+ const E=x=>({[sv]:x});
+ const L=parse(tokens.slice(0,i)),R=parse(tokens.slice(i+1));
+ const f=x=>{const y=L(E(x))-R(E(x));return Number.isFinite(y)?y:NaN};
+ const tol=x=>1e-9*Math.max(1,Math.abs(L(E(x))),Math.abs(R(E(x))));
+ const t0=Date.now(),over=()=>Date.now()-t0>2000;
+ const good=x=>Number.isFinite(x)&&Math.abs(f(x))<=tol(x);
+ function newton(x){
+  for(let k=0;k<100&&!over();k++){
+   const y=f(x);if(!Number.isFinite(y))return null;
+   if(Math.abs(y)<=1e-13*Math.max(1,Math.abs(L(E(x)))))return x;
+   const h=1e-6*Math.max(1,Math.abs(x));let d=(f(x+h)-f(x-h))/(2*h);
+   if(!Number.isFinite(d)||Math.abs(d)<1e-14){const d1=(f(x+h)-y)/h,d2=(y-f(x-h))/h;d=(Number.isFinite(d1)&&Math.abs(d1)>1e-14)?d1:d2}
+   if(!Number.isFinite(d)||Math.abs(d)<1e-14)return null;
+   const st=y/d;let t=1,nx=x,ny=NaN;
+   for(let j=0;j<40;j++){nx=x-t*st;ny=f(nx);if(Number.isFinite(ny)&&Math.abs(ny)<Math.abs(y))break;t/=2;ny=NaN}
+   if(!Number.isFinite(ny))return null;
+   if(Math.abs(nx-x)<=1e-15*Math.max(1,Math.abs(nx)))return nx;
+   x=nx}
+  return good(x)?x:null}
+ function scan(){
+  const N=4000,st=2000/N;let prev=f(-1000);
+  for(let k=1;k<=N&&!over();k++){
+   const x=-1000+k*st,y=f(x);
+   if(Number.isFinite(prev)&&Number.isFinite(y)&&prev*y<=0){
+    let a=x-st,b=x,fa=prev;
+    for(let j=0;j<200;j++){const m=(a+b)/2,fm=f(m);if(!Number.isFinite(fm))break;if(fa*fm<=0)b=m;else{a=m;fa=fm}}
+    const r=(a+b)/2;if(good(r))return r}
+   prev=y}
+  return null}
+ let sol=null;const seen=new Set();
+ for(const s of [vars[sv],0,1,-1,2,-2,5,-5,10,-10,50,-50,100,-100,1e3,-1e3]){
+  if(seen.has(s)||!Number.isFinite(s))continue;seen.add(s);if(over())break;
+  const r=newton(s);if(r!==null&&good(r)){sol=r;break}}
+ if(sol===null)sol=scan();
+ if(sol===null)throw 0;
+ const rd=+sol.toPrecision(12);if(good(rd))sol=rd;if(Math.abs(sol)<1e-7&&good(0))sol=0;
+ vars[sv]=sol;ans=sol;view=dv0();res=sv+'='+fmt(sol);pushHist();fresh=1}
+
+function menuAct(a){
+ const pg=Math.max(1,Math.ceil(menuItems().length/5));
+ if(a==='up'||a==='left')menu.page=(menu.page+pg-1)%pg;
+ else if(a==='down'||a==='right')menu.page=(menu.page+1)%pg;
+ else if(a==='ac'||a==='del'||a==='on')menu=null;
+ else if(a==='const'||a==='conv'||a==='setup'){menu=menu.type===a?null:{type:a,page:0}}
+ else if(a.startsWith('sel:')){const idx=+a.slice(4),ty=menu.type;
+  if(ty==='const'){const it=CONSTS[idx];menu=null;if(!it)return;
+   String(it.v).replace('e+','ᴇ').replace('e-','ᴇ−').split('').forEach(c=>ins(c))}
+  else if(ty==='conv'){const it=CONVS[idx];menu=null;if(!it)return;
+   const v=(tokens.length&&!fresh)?val():ans,r=it.f(v);if(!Number.isFinite(r))throw 0;
+   l1note=(+v.toPrecision(10))+' '+it.n;tokens=[];cur=0;ans=r;view=dv0();showAns();fresh=1}
+  else if(ty==='setup'){const it=SETUP[idx];if(it)it.f()}
+  else if(ty==='confirm'){const w=menu.what;
+   if(idx===0){if(w==='all')resetAll();else{hist=[];hi=0}menu=null}
+   else if(idx===1)menu={type:'setup',page:0}}}}
+
+function act(a){if(!a)return;
+try{
+if(menu)return menuAct(a);
+if(a.startsWith('t:'))return ins(a.slice(2));
+if(a.startsWith('trig:')){let n=a.slice(5);const inv=n[0]==='a';if(inv)n=n.slice(1);ins(n+(hyp?'h':'')+(inv?'⁻¹':'')+'(');hyp=0;return}
+if(a.startsWith('stv:')){const L=a[4];if(tokens.length&&!fresh)doEq();vars[L]=ans;res=L+'='+fmt(vars[L]);fresh=1;return}
+if(a.startsWith('rcv:')){const L=a[4];ins(L);res=L+'='+fmt(vars[L]);return}
+switch(a){
+case'eq':case'calc':doEq();break;
+case'solve':solveEq();break;
+case'ac':tokens=[];cur=0;res='';fresh=0;view=dv0();l1note='';pend=null;break;
+case'del':if(/ERROR/.test(res))res='';if(fresh){fresh=0;res=''}else if(cur>0){tokens.splice(cur-1,1);cur--}break;
+case'left':if(/ERROR/.test(res))res='';if(fresh){fresh=0;res=''}cur=Math.max(0,cur-1);break;
+case'right':if(/ERROR/.test(res))res='';if(fresh){fresh=0;res=''}cur=Math.min(tokens.length,cur+1);break;
+case'up':if(hist.length){hi=Math.max(0,hi-1);tokens=[...hist[hi]];cur=tokens.length;res='';fresh=0}break;
+case'down':if(hist.length&&hi<hist.length-1){hi++;tokens=[...hist[hi]];cur=tokens.length;res='';fresh=0}break;
+case'hyp':hyp=!hyp;break;
+case'eng':eng=!eng;if(fresh)showAns();break;
+case'frac':if(fresh){if(cfg.disp==='math')view=view==='exact'?'dec':'exact';else view=view==='frac'?'dec':'frac';showAns()}break;
+case'mixed':if(fresh){view=view==='mixed'?dv0():'mixed';showAns()}break;
+case'dms':if(fresh){view=view==='dms'?dv0():'dms';showAns()}break;
+case'const':menu={type:'const',page:0};break;
+case'conv':menu={type:'conv',page:0};break;
+case'sto':pend='sto';break;case'rcl':pend='rcl';break;
+case'mp':case'mm':{const v=(tokens.length&&!fresh)?val():ans;vars.M+=a==='mp'?v:-v;ans=v;showAns();fresh=1;break}
+case'rnd':ans=+ans.toPrecision(10);showAns();fresh=1;break;
+case'mode':mode=mode==='D'?'R':mode==='R'?'G':'D';break;
+case'setup':menu={type:'setup',page:0};break;
+case'clr':resetAll();break;
+case'off':off=1;break;case'on':off=0;break}
+}catch(e){menu=null;pend=null;res=e instanceof SynErr?'Syntax ERROR':'Math ERROR';fresh=0;view=dv0()}}
+
+function press(k){const[m,s,a,ma,sa]=k;
+if(off){if(m==='ON'){off=0;draw()}return}
+if(m==='SHIFT'){shift=!shift;alpha=0;return draw()}
+if(m==='ALPHA'){alpha=!alpha;shift=0;return draw()}
+if(menu&&/^[1-5]$/.test(m)&&!shift&&!alpha){act('sel:'+(menu.page*5+ +m-1));return draw()}
+if(pend){
+ if(a&&/^[A-FXYM]$/.test(a)&&!shift){const p=pend;pend=null;act((p==='sto'?'stv:':'rcv:')+a);shift=alpha=0;return draw()}
+ pend=null}
+let x=null;if(shift)x=sa;else if(alpha)x=a?'t:'+a:null;else x=ma;
+shift=alpha=0;act(x);draw()}
+
+function draw(){
+const l1=$('l1'),l2=$('l2');$('lcd').classList.toggle('math',cfg.disp==='math');
+if(menu){const its=menuItems(),pg=Math.max(1,Math.ceil(its.length/5));
+ const ttl={const:'CONST',conv:'CONV',setup:'SETUP',confirm:menu.what==='all'?'RESET ALL?':'CLEAR HISTORY?'}[menu.type];
+ l1.textContent=ttl+(pg>1?'  '+(menu.page+1)+'/'+pg+'  ▲▼':'');l1.scrollLeft=0;
+ l2.innerHTML='<span class="mn'+(menu.type==='setup'?' sm':'')+'">'+its.slice(menu.page*5,menu.page*5+5).map((n,i)=>(i+1)+':'+n).join(' ')+'</span>'}
+else{
+ let h=null;
+ if(cfg.disp==='math'&&tokens.length){if(window.katex){try{h=ktx(rtex(tokens,cur))}catch(e){h=null}}if(h===null){try{h=rmath(tokens,cur)}catch(e){h=null}}}
+ if(h===null){h='';tokens.forEach((t,i)=>{if(i===cur)h+='<b class=c></b>';h+=disp[t]||t});if(cur===tokens.length)h+='<b class=c></b>'}
+ if(!tokens.length&&l1note)h=l1note;
+ l1.innerHTML=h;const c=l1.querySelector('.c,.kc');if(c)l1.scrollLeft=c.offsetLeft-l1.clientWidth+24;
+ l2.innerHTML=res}
+const on=(id,v)=>$(id).classList.toggle('on',!!v);on('iS',shift);on('iA',alpha);on('iM',vars.M);on('iSTO',pend==='sto');on('iRCL',pend==='rcl');on('iH',hyp);on('iD',mode==='D');on('iR',mode==='R');on('iG',mode==='G');on('iE',eng);on('iMath',cfg.disp==='math');
+$('lcd').style.visibility=off?'hidden':'visible';
+document.querySelectorAll('.k[data-m=SHIFT]').forEach(b=>b.classList.toggle('on',!!shift));document.querySelectorAll('.k[data-m=ALPHA]').forEach(b=>b.classList.toggle('on',!!alpha));
+save()}
+
+/* ---------- keypad ---------- */
+const K=(m,s,a,ma,sa,c='')=>[m,s,a,ma,sa,c];
+const rows=[
+[K('CALC','SOLVE','=','calc','solve'),K('∫dx','d/dx',':','t:∫(','t:d/dx('),0,0,K('x⁻¹','x!','','t:⁻¹','t:!'),K('CONST','CONV','','const','conv')],
+[K('ab/c','d/c','','frac','mixed'),K('√','∛','','t:√(','t:³√('),K('x²','x³','','t:²','t:³'),K('^','ˣ√','','t:^','t:ˣ√'),K('log','10ˣ','','t:log(','t:10^('),K('ln','eˣ','','t:ln(','t:e^(')],
+[K('(−)','∠','A','t:−',''),K('°′″','←','B','dms',''),K('hyp','','C','hyp',''),K('sin','sin⁻¹','D','trig:sin','trig:asin'),K('cos','cos⁻¹','E','trig:cos','trig:acos'),K('tan','tan⁻¹','F','trig:tan','trig:atan')],
+[K('RCL','STO','','rcl','sto'),K('ENG','←','','eng',''),K('(','','X','t:(',''),K(')','','Y','t:)',''),K(',',';','','t:,',''),K('M+','M−','M','mp','mm')],
+[K('7','','','t:7','','n'),K('8','','','t:8','','n'),K('9','','','t:9','','n'),K('DEL','INS','','del','','r'),K('AC','OFF','','ac','off','r')],
+[K('4','','','t:4','','n'),K('5','','','t:5','','n'),K('6','','','t:6','','n'),K('×','nPr','','t:×','t:nPr','n'),K('÷','nCr','','t:÷','t:nCr','n')],
+[K('1','','','t:1','','n'),K('2','','','t:2','','n'),K('3','','','t:3','','n'),K('+','','','t:+','','n'),K('−','','','t:−','','n')],
+[K('0','Rnd','','t:0','rnd','n'),K('•','Ran#','','t:.','t:RAN','n'),K('EXP','π','','t:ᴇ','t:π','n'),K('Ans','DRG▶','','t:Ans','mode','n'),K('=','%','','eq','t:%','n')]];
+const keyMap={};
+function mk(k){const b=document.createElement('button');b.className='k '+k[5];b.dataset.m=k[0];
+b.innerHTML=(k[1]?'<i class=s>'+k[1]+'</i>':'')+(k[2]?'<i class=a>'+k[2]+'</i>':'')+k[0];
+b.addEventListener('mousedown',e=>e.preventDefault());b.onclick=()=>press(k);keyMap[k[0]]=k;return b}
+rows.forEach((r,ri)=>{const d=document.createElement('div');d.className='row '+(ri<4?'r6':'r5');
+r.forEach(k=>{if(!k){const s=document.createElement('div');s.className='sp';d.appendChild(s)}else d.appendChild(mk(k))});$('rows').appendChild(d)});
+const topKeys=[['SHIFT','bS','t'],['ALPHA','bA','t'],['MODE','bM','t'],['ON','bO','t']];
+topKeys.forEach(([n,id])=>{const k=n==='MODE'?K('MODE','SETUP','','mode','setup','t'):n==='ON'?K('ON','','','on','','t'):K(n,'','','','','t');
+const g=$(id),l=document.createElement('div');l.className='lab';l.innerHTML='&nbsp;';g.appendChild(l);
+const b=mk(k);b.style.width='100%';if(n==='ALPHA')b.classList.add('alp');g.appendChild(b)});
+document.querySelectorAll('.k.t').forEach(b=>{b.style.color='#222'});
+$('bA').querySelector('.lab').style.color='#ff6a98';$('bA').querySelector('.lab').textContent='ALPHA';$('bS').querySelector('.lab').textContent='SHIFT';
+
+/* ---------- REPLAY pad: mouse + touch ---------- */
+function padDir(cx,cy){const r=$('pad').getBoundingClientRect(),dx=cx-r.left-r.width/2,dy=cy-r.top-r.height/2;
+ act(Math.abs(dx)>Math.abs(dy)?(dx<0?'left':'right'):(dy<0?'up':'down'));draw()}
+$('pad').addEventListener('touchstart',e=>{e.preventDefault();const t=e.touches[0];padDir(t.clientX,t.clientY)},{passive:false});
+$('pad').addEventListener('click',e=>padDir(e.clientX,e.clientY));
+
+/* ---------- keyboard ----------
+ digits . + - * / ( ) ^ , Enter Backspace Escape arrows as usual
+ s/c/t sin/cos/tan   S/C/T inverse   h hyp   l log   n ln   L 10^   N e^   r sqrt   R cbrt   u root
+ p pi   e e   x x^2   i x^-1   ! factorial   % percent   a Ans   E EXP   P nPr   Q nCr
+ k CONST   K CONV   U SETUP   m MODE(DRG)   M M+   f ab/c (n/d)   F d/c (mixed)   d DMS   g ENG   z "=" sign (for SOLVE)
+ q STO   w RCL   (then a-f,x,y,m)    v + letter = insert variable    o ON   O OFF */
+let kbv=0;
+const KB={'+':'+','-':'−','*':'×','/':'÷','(':'(',')':')','^':'^','.':'•',',':',','Enter':'=','=':'=','Backspace':'DEL','Escape':'AC'};
+const KL={s:'trig:sin',c:'trig:cos',t:'trig:tan',S:'trig:asin',C:'trig:acos',T:'trig:atan',h:'hyp',l:'t:log(',n:'t:ln(',L:'t:10^(',N:'t:e^(',r:'t:√(',R:'t:³√(',u:'t:ˣ√',
+p:'t:π',e:'t:e',x:'t:²',i:'t:⁻¹','!':'t:!','%':'t:%',a:'t:Ans',E:'t:ᴇ',P:'t:nPr',Q:'t:nCr',k:'const',K:'conv',m:'mode',M:'mp',f:'frac',F:'mixed',d:'dms',g:'eng',z:'t:=',q:'sto',w:'rcl',O:'off',U:'setup'};
+document.addEventListener('keydown',e=>{if(e.ctrlKey||e.metaKey||e.altKey)return;const k=e.key;
+if(off){if(k==='o'){off=0;draw()}return}
+if(k.startsWith('Arrow')){act(k.slice(5).toLowerCase());draw();e.preventDefault();return}
+const isVar=/^[a-fxym]$/i.test(k);
+if((pend||kbv)&&isVar){e.preventDefault();const L=k.toUpperCase();
+ if(pend){const p=pend;pend=null;act((p==='sto'?'stv:':'rcv:')+L)}else act('t:'+L);
+ kbv=0;shift=alpha=0;draw();return}
+pend=null;
+if(k==='v'){kbv=1;e.preventDefault();return}
+kbv=0;
+if(/^[0-9]$/.test(k)&&keyMap[k]){e.preventDefault();press(keyMap[k]);return}
+if(KB[k]&&keyMap[KB[k]]){e.preventDefault();press(keyMap[KB[k]]);return}
+if(KL[k]){e.preventDefault();shift=alpha=0;act(KL[k]);draw()}});
+load();view=dv0();draw();
+</script></body></html>
