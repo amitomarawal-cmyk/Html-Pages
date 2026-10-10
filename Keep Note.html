@@ -31,8 +31,8 @@ main{max-width:1100px;margin:0 auto;padding:18px 14px 90px}
 .btn{background:var(--ac);color:#fff;border:0;border-radius:6px;padding:6px 16px;cursor:pointer}
 .btn.g{background:#fff;color:var(--tx);border:1px solid var(--ln)}
 .btn.d{background:#d93025}
-#grid{column-width:170px;column-gap:12px}
-.note{break-inside:avoid;margin:0 0 12px;border-radius:14px;border:1px solid rgba(0,0,0,.08);padding:14px 14px 10px;cursor:pointer;transition:box-shadow .15s}
+#grid{position:relative}
+.note{break-inside:avoid;margin:0;min-width:0;border-radius:14px;border:1px solid rgba(0,0,0,.08);padding:14px 14px 10px;cursor:pointer;transition:box-shadow .15s}
 .note:hover{box-shadow:0 1px 3px rgba(60,64,67,.3),0 4px 8px 3px rgba(60,64,67,.15)}
 .note.hl{outline:3px solid var(--ac);box-shadow:0 0 0 6px rgba(26,115,232,.25)}
 .body{white-space:pre-wrap;word-break:break-word;max-height:15em;overflow:hidden;font-size:14.5px;line-height:1.5;-webkit-mask-image:linear-gradient(#000 85%,transparent);mask-image:linear-gradient(#000 85%,transparent)}
@@ -166,9 +166,22 @@ function render(){
   }
   const g=$('grid');g.innerHTML='';
   const list=db.notes.filter(n=>curWin==='all'||n.win===curWin);
-  if(!list.length){g.innerHTML='<div class="empty">কোনো নোট নেই। নিচের + চাপুন।</div>';return;}
+  if(!list.length){g.style.height='';g.innerHTML='<div class="empty">কোনো নোট নেই। নিচের + চাপুন।</div>';return;}
   list.sort((a,b)=>b.t-a.t).forEach(n=>g.append(card(n)));
+  layout();
 }
+function layout(){
+  const g=$('grid'),items=[...g.children].filter(c=>c.classList.contains('note'));
+  if(!items.length){g.style.height='';return}
+  const gap=12,W=g.clientWidth,cols=Math.max(1,Math.floor((W+gap)/(170+gap))),cw=(W-gap*(cols-1))/cols,hs=Array(cols).fill(0);
+  items.forEach(it=>{it.style.position='absolute';it.style.boxSizing='border-box';it.style.width=cw+'px'});
+  items.forEach(it=>{let c=0;for(let i=1;i<cols;i++)if(hs[i]<hs[c]-0.5)c=i;
+    it.style.left=c*(cw+gap)+'px';it.style.top=hs[c]+'px';hs[c]+=it.offsetHeight+gap});
+  g.style.height=Math.max(...hs)-gap+'px';
+}
+addEventListener('resize',()=>layout());
+if(window.ResizeObserver)new ResizeObserver(()=>layout()).observe(document.querySelector('main'));
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>layout());
 function newWin(){
   const name=(prompt('নতুন উইন্ডোর নাম:')||'').trim();if(!name)return;
   const id='w'+(db.wseq++);db.windows.push({id,name});curWin=id;save();render();

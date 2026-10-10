@@ -93,8 +93,8 @@ const SETUP=[
 {n:()=>'Disp:'+(cfg.disp==='math'?'Math':'Line'),f:()=>{cfg.disp=cfg.disp==='math'?'line':'math';view=dv0();if(fresh&&!/^[A-FXYM]=/.test(res)&&!/ERROR/.test(res))showAns()}},
 {n:()=>'Ang:'+({D:'Deg',R:'Rad',G:'Gra'})[mode],f:()=>{mode=mode==='D'?'R':mode==='R'?'G':'D'}},
 {n:()=>'ENG:'+(eng?'on':'off'),f:()=>{eng=eng?0:1;if(fresh)showAns()}},
-{n:()=>'ClrHist',f:()=>{menu={type:'confirm',what:'hist'}}},
-{n:()=>'Reset',f:()=>{menu={type:'confirm',what:'all'}}}];
+{n:()=>'ClrHist',f:()=>{menu={type:'confirm',what:'hist',page:0}}},
+{n:()=>'Reset',f:()=>{menu={type:'confirm',what:'all',page:0}}}];
 function menuItems(){return menu.type==='const'?CONSTS.map(c=>c.n):menu.type==='conv'?CONVS.map(c=>c.n):menu.type==='setup'?SETUP.map(x=>x.n()):['Yes','No']}
 
 /* ---------- constants & conversions ---------- */
