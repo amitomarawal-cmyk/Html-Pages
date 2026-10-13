@@ -46,7 +46,7 @@ section{display:none}section.on{display:block}
 .st b{font-size:24px;color:#3b82f6;font-weight:500}
 small{color:#555;font-size:13px}
 .lab{font-size:13px;color:#777;margin:6px 0 4px}
-.dots{display:flex;justify-content:space-around;align-items:center;padding:10px 6px}
+.dots{display:flex;flex-wrap:wrap;align-items:center;gap:9px 10px;padding:10px}
 .dot{width:30px;height:30px;border-radius:50%;border:1px solid #ccc;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;font-size:18px}
 .card select{width:100%;border:0;background:none;font-size:17px;text-align:center}
 .list{background:#fff;border-radius:12px;overflow:hidden;margin-bottom:10px}
@@ -197,7 +197,7 @@ img[data-w=front]{position:absolute;z-index:3;max-width:none}
         </div>
       </div>
       <div class="lab">Text Color</div>
-      <div class="row"><div class="card dots" id="tc" style="flex:3"></div><button class="card" data-fc="#1f1f1f" style="color:#3b82f6;border-color:#3b82f6;cursor:pointer">Automatic</button></div>
+      <div class="card dots" id="tc" style="margin-bottom:10px"></div>
       <div class="lab">Highlight</div>
       <div class="card dots" id="hc" style="margin-bottom:10px"></div>
       <div class="row">
@@ -383,9 +383,9 @@ if(!ed.innerHTML.trim())ed.innerHTML='<p><br></p>';
 document.execCommand('defaultParagraphSeparator',false,'p');
 
 /* ---------- color dots ---------- */
-const dots=(id,cols,at,ci)=>{$(id).innerHTML=cols.map(c=>c==='none'?`<span class="dot" ${at}="transparent">⊘</span>`:`<span class="dot" style="background:${c}" ${at}="${c}"></span>`).join('')+`<span class="dot" onclick="$('${ci}').click()">⋯</span>`};
-dots('#tc',['#323338','#c00000','#ffc000','#92d050','#00a0e9'],'data-fc','#tcI');
-dots('#hc',['#ffff00','#00ff00','#00ffff','#ff00ff','#ff0000','none'],'data-hc','#hcI');
+const dots=(id,cols,at,ci)=>{$(id).innerHTML=cols.map(c=>c==='none'?`<span class="dot" ${at}="transparent">⊘</span>`:c==='auto'?`<span class="dot" ${at}="#1f1f1f" style="border:2px solid #3b82f6;color:#3b82f6;font:700 15px sans-serif">A</span>`:`<span class="dot" style="background:${c}" ${at}="${c}"></span>`).join('')+`<span class="dot" data-k="${ci}">⋯</span>`};
+dots('#tc',['auto','#000000','#404040','#808080','#ffffff','#c00000','#ff0000','#ff6600','#ffc000','#92d050','#00b050','#008080','#00b0f0','#0070c0','#002060','#7030a0','#ff00ff','#7f3f00'],'data-fc','#tcI');
+dots('#hc',['#ffff00','#00ff00','#00ffff','#ff00ff','#ff9900','#ff6666','#ffd966','#b6d7a8','#9fc5e8','#d9d2e9','#d9d9d9','#000000','none'],'data-hc','#hcI');
 $('#tcI').oninput=e=>ex('foreColor',e.target.value);$('#hcI').oninput=e=>ex('hiliteColor',e.target.value);
 
 /* ---------- panel events ---------- */
@@ -396,8 +396,8 @@ $('#tabs').addEventListener('click',e=>{const b=e.target.closest('[data-t]');if(
   document.querySelectorAll('#tabs [data-t]').forEach(x=>x.classList.toggle('on',x===b));
   document.querySelectorAll('section').forEach(s=>s.classList.toggle('on',s.id==='s-'+b.dataset.t));$('#pbody').style.display=''});
 document.addEventListener('click',e=>{
-  const b=e.target.closest('[data-c],[data-a],[data-fc],[data-hc]');if(!b)return;const d=b.dataset;
-  if(d.c)ex(d.c,d.v);else if(d.fc)ex('foreColor',d.fc);else if(d.hc)ex('hiliteColor',d.hc);else A[d.a]&&A[d.a]();
+  const b=e.target.closest('[data-c],[data-a],[data-fc],[data-hc],[data-k]');if(!b)return;const d=b.dataset;
+  if(d.k)$(d.k).click();else if(d.c)ex(d.c,d.v);else if(d.fc)ex('foreColor',d.fc);else if(d.hc)ex('hiliteColor',d.hc);else A[d.a]&&A[d.a]();
 });
 $('#dx').onclick=()=>$('#dlg').close();
 
@@ -586,7 +586,7 @@ function buildDocx0(){
 
 /* ---------- keyboard only when typing ---------- */
 ed.addEventListener('blur',()=>ed.setAttribute('inputmode','none'));
-ed.addEventListener('click',e=>{const im=e.target.tagName==='IMG'?e.target:null;pick(im);if(im)return;
+ed.addEventListener('click',e=>{const im=e.target.tagName==='IMG'?e.target:null;pick(im);if(im||e.target.closest('.mth,.pb'))return;
   if(ed.getAttribute('inputmode')==='none'){const r=saved;ed.blur();ed.setAttribute('inputmode','text');ed.focus();if(r){const s=getSelection();s.removeAllRanges();s.addRange(r)}}});
 
 /* ---------- picture: resize / wrap ---------- */
@@ -605,7 +605,7 @@ $('#ih').addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation
 
 /* ---------- page view (editable) ---------- */
 let stT,stS,sct,lw=0,fq=0,kh,kd=0,comp=0;
-const tagImgs=()=>{ed.querySelectorAll('img').forEach(i=>{const b=blk(i);b&&b!==ed&&b.classList.add('hi')});ed.querySelectorAll('.mth.md').forEach(m=>{const p=m.parentElement;if(p&&p!==ed&&!p.style.textAlign&&p.textContent.replace(/[\u200b\s]/g,'')===m.textContent.replace(/[\u200b\s]/g,''))p.style.textAlign='center'});watch()};
+const tagImgs=()=>{ed.querySelectorAll('.mth:not([contenteditable])').forEach(m=>m.contentEditable='false');ed.querySelectorAll('img').forEach(i=>{const b=blk(i);b&&b!==ed&&b.classList.add('hi')});ed.querySelectorAll('.mth.md').forEach(m=>{const p=m.parentElement;if(p&&p!==ed&&!p.style.textAlign&&p.textContent.replace(/[\u200b\s]/g,'')===m.textContent.replace(/[\u200b\s]/g,''))p.style.textAlign='center'});watch()};
 const buildDocx=()=>{const was=ed.classList.contains('pgv');ed.classList.remove('pgv');try{return buildDocx0()}finally{if(was)ed.classList.add('pgv')}};
 const geo=()=>{let[w,h]=PS[S.sz];if(S.land)[w,h]=[h,w];const k=96/25.4,H=h*k,m=S.mar*k;return{W:w*k,H,m,P:H+12,cb:H-2*m}};
 let uz=1;
@@ -1132,8 +1132,10 @@ function mathInsert(l,d){
   if(mEd&&mEd.isConnected){mEd.dataset.l=l;if(d)mEd.dataset.d='1';else mEd.removeAttribute('data-d');mEd.classList.toggle('md',!!d);mEd.innerHTML=mh(mparse(l));
     const pp=mEd.parentElement;if(d&&pp&&pp!==ed&&!pp.style.textAlign&&pp.textContent.replace(/[\u200b\s]/g,'')===mEd.textContent.replace(/[\u200b\s]/g,''))pp.style.textAlign='center';
     mEd=null;okTo=-1;sync();return}
-  if(d)ins('<p style="text-align:center">'+mathSpan(l,1)+'&#8203;</p>');
-  else ins(mathSpan(l)+'&#8203;')}
+  const q=mh(mparse(l));
+  ins((d?'<p style="text-align:center">':'')+`<span class="mth${d?' md':''}" data-l="${esc(l)}"${d?' data-d="1"':''} data-mph="1">T</span>&#8203;`+(d?'</p>':''));
+  const n=ed.querySelector('[data-mph]');
+  if(n){n.removeAttribute('data-mph');n.style.removeProperty('font-size');n.getAttribute('style')||n.removeAttribute('style');n.contentEditable='false';n.innerHTML=q;tagImgs();sync()}}
 $('#mi').addEventListener('input',()=>{mFresh=0;mUp()});
 $('#mdc').addEventListener('change',mUp);
 $('#mcx').onclick=()=>$('#mdlg').close();
