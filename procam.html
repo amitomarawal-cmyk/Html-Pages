@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="bn"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>প্রো ক্যামেরা</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#0d1117;--pn:#161c25;--ln:#273041;--fg:#eef2f7;--mt:#8a96a8;--ac:#5eead4;--wr:#fb923c;color-scheme:dark;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0;background:var(--bg);color:var(--fg);font:15px/1.4 "Hind Siliguri","Noto Sans Bengali",system-ui,sans-serif;overflow:hidden}
+button,select{font:inherit;color:inherit}
+button{background:var(--pn);border:1px solid var(--ln);border-radius:10px;padding:8px 12px;cursor:pointer}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:2px solid var(--ac);outline-offset:2px}
+button.on{background:var(--ac);color:#06201c;border-color:var(--ac);font-weight:700}
+#app{height:100%;display:flex;flex-direction:column}
+.view{display:none;flex:1;min-height:0;flex-direction:column}.view.show{display:flex}
+nav{display:flex;gap:6px;padding:8px;border-bottom:1px solid var(--ln)}nav button{flex:1}
+.top{display:flex;gap:6px;padding:8px;align-items:center;flex-wrap:wrap}
+select{background:var(--pn);border:1px solid var(--ln);border-radius:10px;padding:7px}
+.ratios{display:flex;gap:4px;margin-left:auto}.ratios button{padding:6px 8px;font-size:13px}
+#stage{flex:1;min-height:0;display:flex;align-items:center;justify-content:center;background:#05070a;position:relative}
+#frame{position:relative;overflow:hidden;background:#000;touch-action:none}
+#v{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+#v.mir{transform:scaleX(-1)}
+.grid{position:absolute;inset:0;pointer-events:none;background:
+linear-gradient(#fff6,#fff6) 33.333% 0/1px 100% no-repeat,linear-gradient(#fff6,#fff6) 66.666% 0/1px 100% no-repeat,
+linear-gradient(#fff6,#fff6) 0 33.333%/100% 1px no-repeat,linear-gradient(#fff6,#fff6) 0 66.666%/100% 1px no-repeat}
+.pv{position:absolute;inset:0;pointer-events:none;display:none}
+.pv.show{display:block}
+.pv .b{position:absolute;inset:0;backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);background:rgba(0,0,0,.45);-webkit-mask-image:radial-gradient(ellipse calc(40% * var(--ps,1)) calc(48% * var(--ps,1)) at var(--px,50%) var(--py,45%),transparent 55%,#000 100%);mask-image:radial-gradient(ellipse calc(40% * var(--ps,1)) calc(48% * var(--ps,1)) at var(--px,50%) var(--py,45%),transparent 55%,#000 100%)}
+.pv .g{position:absolute;inset:0;background:radial-gradient(ellipse calc(40% * var(--ps,1)) calc(48% * var(--ps,1)) at var(--px,50%) var(--py,45%),rgba(255,236,214,.12) 0,transparent 80%)}
+#psw[hidden]{display:none}
+#ring{position:absolute;width:64px;height:64px;margin:-32px;border:2px solid var(--ac);border-radius:50%;pointer-events:none;opacity:0;transition:opacity .3s,transform .2s}
+#ring.show{opacity:1}
+#ex{position:absolute;height:110px;width:28px;writing-mode:vertical-lr;direction:rtl;opacity:0;pointer-events:none;accent-color:var(--ac)}
+#ex.show{opacity:1;pointer-events:auto}
+#flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
+#idle{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;text-align:center;padding:20px;color:var(--mt);background:#000;pointer-events:none}
+#idle[hidden]{display:none}
+#msg{position:absolute;inset:0;display:none;align-items:center;justify-content:center;flex-direction:column;gap:12px;text-align:center;padding:24px}
+.dock{padding:8px;display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--ln)}
+.strip{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}.strip button{white-space:nowrap;padding:6px 12px;font-size:13px}
+.row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+#shot{width:68px;height:68px;border-radius:50%;border:4px solid #fff;background:var(--ac);padding:0}
+#shot:active{transform:scale(.92)}
+.thumb{width:48px;height:48px;border-radius:10px;object-fit:cover;background:var(--pn);border:1px solid var(--ln)}
+#gal{overflow-y:auto;padding:10px}
+.gg{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.card{background:var(--pn);border:1px solid var(--ln);border-radius:12px;overflow:hidden}
+.card img{width:100%;aspect-ratio:1;object-fit:contain;background:#05070a;display:block;cursor:pointer}
+.card .m{padding:8px;display:flex;justify-content:space-between;align-items:center;font-size:12px;color:var(--mt)}.card .m.w{color:var(--wr)}
+.card .m button{padding:4px 8px;font-size:12px}
+.hint{color:var(--mt);font-size:13px;padding:6px 10px}
+#ed{position:fixed;inset:0;z-index:5;background:var(--bg);display:none;flex-direction:column;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+#ed.show{display:flex}
+#ecv{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);touch-action:none}
+#ew{position:relative;overflow:hidden;flex:1;min-height:0;display:flex;align-items:center;justify-content:center;background:#05070a}
+.panel{padding:8px;border-top:1px solid var(--ln);max-height:34vh;overflow-y:auto}
+.sl{display:grid;grid-template-columns:90px 1fr 36px;gap:6px;align-items:center;font-size:13px}
+.sl input{accent-color:var(--ac);width:100%}
+.sl span:last-child{color:var(--mt);text-align:right}
+#toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);background:var(--fg);color:#111;padding:8px 14px;border-radius:20px;opacity:0;transition:opacity .3s;pointer-events:none;z-index:9;max-width:90%}
+#toast.show{opacity:1}
+nav,#fs,#psw,#m0,#m1,#res,#lt{display:none!important}
+.row{justify-content:center!important}
+.cr{border:1px solid var(--ln);border-radius:10px;padding:6px;margin:6px 0}
+.crr{display:flex;gap:8px;align-items:center;margin-bottom:6px}
+.crr input[type=color]{width:44px;height:34px;border:0;background:none;padding:0}
+.crr span{color:var(--mt)}.crr button:last-child{margin-left:auto}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style></head><body>
+<div id="app">
+<nav><button id="n1" class="on">📷 ক্যামেরা</button><button id="n2">🖼 গ্যালারি <small id="cnt"></small></button></nav>
+
+<section id="cam" class="view show">
+ <div class="top">
+  <button id="flip" aria-label="সামনে/পেছনে ক্যামেরা">🔄</button><button id="lens" hidden aria-label="লেন্স বদল">🔭 লেন্স</button><button id="fl" aria-label="ফ্ল্যাশলাইট">🔦</button><button id="gb">🖼 গ্যালারি</button><button id="nt" class="on">🌙 অটো নাইট</button>
+  <select id="res" aria-label="রেজুলেশন"><option value="max">ম্যাক্স সেন্সর</option><option value="4k">4K</option><option value="fhd">FHD 1080p</option><option value="hd">HD 720p</option><option value="vga">VGA 480p</option></select>
+  <div class="ratios" id="ratios"></div>
+ </div>
+ <div id="stage">
+  <div id="frame">
+   <video id="v" autoplay playsinline muted></video>
+   <div class="pv" id="pv"><div class="b"></div><div class="g"></div></div>
+   <div class="grid"></div>
+   <div id="ring"></div><input id="ex" type="range" min="-2" max="2" step="0.1" value="0" aria-label="আলো">
+   <div id="flash"></div><div id="idle" hidden>৩০ সেকেন্ড নিষ্ক্রিয় ছিল, তাই ক্যামেরা বন্ধ হয়েছে।<br>চালু করতে স্ক্রিনে ট্যাপ করুন।</div>
+  </div>
+  <div id="msg"><div id="mt">ক্যামেরা চালু করা যায়নি।</div>
+   <label><button type="button" id="up">ফোনের ক্যামেরা/ফাইল থেকে ছবি নিন</button><input id="file" type="file" accept="image/*" capture="environment" hidden></label></div>
+ </div>
+ <div class="dock">
+  <div class="sl" id="psw" hidden><span>পোট্রেট আয়তন</span><input id="ps" type="range" min=".4" max="1.8" step=".05"><span></span></div>
+  <div class="strip" id="fs"></div>
+  <div class="row">
+   <img id="lt" class="thumb" alt="সর্বশেষ ছবি" hidden>
+   <button id="shot" aria-label="ছবি তুলুন"></button>
+   <div class="strip"><button id="m0">ফটো</button><button id="m1">পোট্রেট</button></div>
+  </div>
+ </div>
+</section>
+
+<section id="glr" class="view">
+ <div class="top"><button id="gback">← ক্যামেরা</button></div>
+ <div class="hint">ছবি তোলার ৪৮ ঘণ্টা পর নিজে থেকে মুছে যায়। তার আগে ডাউনলোড করে নিন।</div>
+ <div id="gal"><div class="gg" id="gg"></div></div>
+</section>
+</div>
+
+<div id="ed">
+ <div class="top"><button id="eb">← ফিরে যান</button><button id="er">রিসেট</button><button id="d1" style="margin-left:auto">⬇ এডিটেড</button><button id="d0">⬇ অরিজিনাল</button></div>
+ <div id="ew"><canvas id="ecv"></canvas></div>
+ <div class="dock" style="padding-bottom:4px">
+  <div class="strip" id="tabs"></div>
+  <div class="panel" id="pan"></div>
+ </div>
+</div>
+<div id="toast"></div>
+
+<script>
+const $=s=>document.querySelector(s),mk=(w,h)=>{const c=document.createElement('canvas');c.width=w;c.height=h;return c};
+const LS={g(k,d){try{return JSON.parse(localStorage.getItem(k))??d}catch{return d}},s(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch{}}};
+let S=Object.assign({face:'environment',res:'max',ratio:'4:3',filter:'none',portrait:false,pf:{x:.5,y:.45,s:1}},LS.g('pc.s',{}));
+const sv=()=>LS.s('pc.s',S);
+S.filter='none';S.portrait=false;S.res='max';if(S.night===undefined)S.night=true;
+if(!S.fullDone){S.ratio='full';S.fullDone=1;sv()}
+const bn=n=>Number(n).toLocaleString('bn-BD');
+function toast(t){const e=$('#toast');e.textContent=t;e.classList.add('show');clearTimeout(toast.t);toast.t=setTimeout(()=>e.classList.remove('show'),2600)}
+
+/* ---------- Filters ---------- */
+const PRE={none:'',vivid:'saturate(1.35) contrast(1.08)',warm:'sepia(.25) saturate(1.2) hue-rotate(-8deg) brightness(1.04)',cool:'saturate(1.1) hue-rotate(12deg) brightness(1.02) contrast(1.05)',golden:'sepia(.35) saturate(1.5) brightness(1.06)',cine:'contrast(1.18) saturate(.85) sepia(.15) hue-rotate(-12deg)',drama:'contrast(1.35) saturate(1.15) brightness(.95)',fade:'contrast(.88) brightness(1.1) saturate(.8)',pastel:'saturate(.7) brightness(1.12) contrast(.92)',vintage:'sepia(.5) contrast(.95) brightness(1.05) saturate(.9)',mono:'grayscale(1) contrast(1.15)',noir:'grayscale(1) contrast(1.5) brightness(.85)'};
+const FN={none:'অরিজিনাল',vivid:'ভিভিড',warm:'ওয়ার্ম',cool:'কুল',golden:'গোল্ডেন',cine:'সিনেমা',drama:'ড্রামা',fade:'ফেড',pastel:'প্যাস্টেল',vintage:'ভিন্টেজ',mono:'মনো',noir:'নোয়ার'};
+const FILM=[['PORTRA 400','contrast(1.05) saturate(1.1) sepia(.12) brightness(1.04)'],['PORTRA 160','contrast(.98) saturate(.95) sepia(.1) brightness(1.06) hue-rotate(-5deg)'],['SUPERIA 400','contrast(1.1) saturate(1.25) hue-rotate(8deg) brightness(1.02)'],['GOLD 200','contrast(1.08) saturate(1.2) sepia(.3) brightness(1.05)'],['PRO 400H','contrast(.95) saturate(.9) hue-rotate(-8deg) brightness(1.08)'],['KODACHROME 25','contrast(1.25) saturate(1.35) sepia(.15)'],['KODACHROME 64','contrast(1.18) saturate(1.25) sepia(.2) hue-rotate(-4deg)'],['COLOR 200','contrast(1.05) saturate(1.15) sepia(.1) hue-rotate(4deg)'],['CINESTILL 800T','contrast(1.1) saturate(1.1) hue-rotate(185deg) sepia(.1) hue-rotate(-170deg) brightness(.98)'],['ULTRA MAX 400','contrast(1.2) saturate(1.4) brightness(1.03)'],['CINESTILL 50D','contrast(1.08) saturate(1.1) sepia(.08) brightness(1.04)'],['VIBRA 100','contrast(1.15) saturate(1.7)'],['DEEP EM 8','contrast(1.3) saturate(1.5) sepia(.2) brightness(.92)'],['VISION3 250D','contrast(1.05) saturate(1) sepia(.06) brightness(1.02)'],['TRI-X 400','grayscale(1) contrast(1.3) brightness(.98)'],['HP5+ 400 PUSH2OP','grayscale(1) contrast(1.5) brightness(.9)'],['DRAMATIC B&W','grayscale(1) contrast(1.7) brightness(.88)'],['CINEMATIC','contrast(1.15) saturate(.9) sepia(.15) hue-rotate(-10deg) brightness(.95)'],['RETRO SUMMER','contrast(1.05) saturate(1.3) sepia(.35) hue-rotate(-12deg) brightness(1.06)'],['DISPOSABLE','contrast(1.2) saturate(1.2) sepia(.2) brightness(1.1)'],['EXPIRED FILM','contrast(.9) saturate(.8) sepia(.4) hue-rotate(10deg) brightness(1.05)'],['PASTEL POP','contrast(.88) saturate(1.1) brightness(1.15)'],['RED NOIR','contrast(1.4) saturate(2) sepia(1) hue-rotate(-30deg) brightness(.8)'],['PEACH','saturate(1.1) sepia(.25) hue-rotate(-18deg) brightness(1.08)'],['MOONLIGHT MELON','contrast(1.05) saturate(1.2) hue-rotate(20deg) brightness(.95)'],['WINTER ROSE','contrast(1) saturate(.9) hue-rotate(-25deg) sepia(.1) brightness(1.08)'],['PURPLE DREAM','contrast(1.1) saturate(1.3) hue-rotate(250deg) sepia(.3) hue-rotate(-60deg)'],['SEPIA','sepia(1) contrast(1.05)']];
+FILM.forEach(([n,c],i)=>{PRE['film'+i]=c;FN['film'+i]=n});
+const RES={max:null,'4k':[3840,2160],fhd:[1920,1080],hd:[1280,720],vga:[640,480]};
+const RATIOS=['full','1:1','4:3','3:2','16:9','21:9'];
+
+/* ---------- Storage (IndexedDB, memory fallback) ---------- */
+const DB={db:null,mem:[],open(){return new Promise(ok=>{try{const r=indexedDB.open('procam',1);r.onupgradeneeded=()=>r.result.createObjectStore('p',{keyPath:'id'});r.onsuccess=()=>{this.db=r.result;ok()};r.onerror=()=>ok()}catch{ok()}})},
+tx(m,f){return new Promise((ok,no)=>{const t=this.db.transaction('p',m),q=f(t.objectStore('p'));t.oncomplete=()=>ok(q&&q.result);t.onerror=()=>no()})},
+async all(){return this.db?this.tx('readonly',s=>s.getAll()):this.mem.slice()},
+async put(o){if(!this.db){this.mem=this.mem.filter(x=>x.id!==o.id);this.mem.push(o);return}return this.tx('readwrite',s=>s.put(o))},
+async del(id){if(!this.db){this.mem=this.mem.filter(x=>x.id!==id);return}return this.tx('readwrite',s=>s.delete(id))}};
+const TTL=48*36e5;
+async function purge(){const a=await DB.all();for(const p of a)if(Date.now()-p.ts>TTL)await DB.del(p.id);}
+
+/* ---------- Render pipeline (shared by preview & full-res export) ---------- */
+const adj=a=>`brightness(${Math.max(0,100+a.br)}%) contrast(${Math.max(0,100+a.ct)}%) saturate(${Math.max(0,100+a.sa)}%) hue-rotate(${a.hu}deg)`;
+const newEdit=()=>({filter:'none',adj:{br:0,ct:0,sa:0,hu:0},ai:{auto:null,portrait:false,smooth:false,hdr:false,night:false,glow:false,vig:false},pf:{x:.5,y:.45,s:1},lay:newLay(),cr:[]});
+const LT={br:['উজ্জ্বলতা',v=>`brightness(${Math.max(0,100+v)}%)`],ct:['কনট্রাস্ট',v=>`contrast(${Math.max(0,100+v)}%)`],sa:['স্যাচুরেশন',v=>`saturate(${Math.max(0,100+v)}%)`],hu:['হিউ',v=>`hue-rotate(${v*1.8}deg)`],bl:['ব্লার',(v,s)=>`blur(${v*.12*s}px)`]};
+const newLay=()=>({br:{v:30,st:[]},ct:{v:25,st:[]},sa:{v:40,st:[]},hu:{v:30,st:[]},bl:{v:50,st:[]}});
+function cropFor(w,h,rs){if(rs==='full')return{x:0,y:0,w,h};let v=eval(rs.replace(':','/'));if(h>w)v=1/v;let cw,ch;if(w/h>v){ch=h;cw=Math.round(h*v)}else{cw=w;ch=Math.round(w/v)}return{x:Math.round((w-cw)/2),y:Math.round((h-ch)/2),w:cw,h:ch}}
+function ell(W,H,inv,f){f=f||{x:.5,y:.45,s:1};const c=mk(W,H),g=c.getContext('2d'),r0=W*.42,r=r0*f.s;g.translate(W*f.x,H*f.y);g.scale(1,H*.5/r0);const gr=g.createRadialGradient(0,0,r*.55,0,0,r*1.15);gr.addColorStop(0,inv?'rgba(0,0,0,0)':'#000');gr.addColorStop(1,inv?'#000':'rgba(0,0,0,0)');g.fillStyle=gr;g.fillRect(-W*6,-W*12,W*12,W*24);return c}
+function lay(x,src,mask,al,W,H,f){const t=mk(W,H),g=t.getContext('2d');g.filter=f||'none';g.drawImage(src,0,0);g.filter='none';if(mask){g.globalCompositeOperation='destination-in';g.drawImage(mask,0,0)}x.globalAlpha=al;x.drawImage(t,0,0);x.globalAlpha=1}
+const hex=h=>[1,3,5].map(i=>parseInt(h.substr(i,2),16));
+function recolor(cv,rules){const W=cv.width,H=cv.height,x=cv.getContext('2d'),im=x.getImageData(0,0,W,H),d=im.data;
+ const R=rules.filter(r=>r.tol>0).map(r=>{const T=r.tol/100*220;return{f:hex(r.f),t:hex(r.t),T,T2:T*T,T0:T*.65,sp:T*.35}});if(!R.length)return;
+ for(let i=0;i<d.length;i+=4){let bw=0,bi=-1;const r=d[i],g=d[i+1],b=d[i+2];
+  for(let j=0;j<R.length;j++){const q=R[j],dr=r-q.f[0],dg=g-q.f[1],db=b-q.f[2],d2=dr*dr+dg*dg+db*db;if(d2>=q.T2)continue;const dist=Math.sqrt(d2),w=dist<=q.T0?1:(q.T-dist)/q.sp;if(w>bw){bw=w;bi=j}}
+  if(bi>=0){const q=R[bi];for(let c=0;c<3;c++){const o=d[i+c];let v=q.t[c]+(o-q.f[c])*.5;v=v<0?0:v>255?255:v;d[i+c]=o+(v-o)*bw}}}
+ x.putImageData(im,0,0)}
+function dro(cv,amt){if(amt<=0)return;const W=cv.width,H=cv.height,x=cv.getContext('2d'),gw=Math.max(8,Math.round(W/16)),gh=Math.max(8,Math.round(H/16)),lc=mk(gw,gh),lg=lc.getContext('2d',{willReadFrequently:true});
+ lg.drawImage(cv,0,0,gw,gh);const d0=lg.getImageData(0,0,gw,gh).data,L0=new Float32Array(gw*gh);
+ for(let i=0;i<L0.length;i++)L0[i]=(.2126*d0[i*4]+.7152*d0[i*4+1]+.0722*d0[i*4+2])/255;
+ const Lb=boxBlur(L0,gw,gh,Math.max(2,Math.round(gw/10))),k=amt/100*.65,G=new Float32Array(gw*gh);
+ for(let i=0;i<G.length;i++)G[i]=Math.max(.72,Math.min(2.6,Math.pow(.5/Math.max(Lb[i],.05),k)));
+ const im=x.getImageData(0,0,W,H),d=im.data;
+ for(let y=0;y<H;y++){const gy=y/Math.max(1,H-1)*(gh-1),y1=Math.floor(gy),y2=Math.min(gh-1,y1+1),fy=gy-y1;
+  for(let xx=0;xx<W;xx++){const gx=xx/Math.max(1,W-1)*(gw-1),x1=Math.floor(gx),x2=Math.min(gw-1,x1+1),fx=gx-x1,
+   g=(G[y1*gw+x1]*(1-fx)+G[y1*gw+x2]*fx)*(1-fy)+(G[y2*gw+x1]*(1-fx)+G[y2*gw+x2]*fx)*fy,p=(y*W+xx)*4;
+   for(let c=0;c<3;c++){let v=d[p+c]/255*g;if(g>1&&v>.8)v=.8+.2*(1-Math.exp(-(v-.8)/.2));d[p+c]=v*255}}}
+ x.putImageData(im,0,0)}
+function render(cv,src,rs,e){
+ const W=cv.width,H=cv.height,x=cv.getContext('2d'),c=cropFor(src.width,src.height,rs),s=W/1000,a=e.ai,u=a.auto||{br:0,ct:0,sa:0};
+ const A={br:e.adj.br+u.br+(a.night?30:0),ct:e.adj.ct+u.ct+(a.night?10:0),sa:e.adj.sa+u.sa+(a.night?15:0),hu:e.adj.hu};
+ x.clearRect(0,0,W,H);x.filter=(PRE[e.filter]||'')+' '+adj(A);x.drawImage(src,c.x,c.y,c.w,c.h,0,0,W,H);x.filter='none';if(e.cr&&e.cr.length)recolor(cv,e.cr);
+ if(a.hdr)dro(cv,a.dro==null?60:a.dro);
+ if(a.smooth)lay(x,cv,ell(W,H,0,e.pf),.7,W,H,`blur(${2.2*s}px) brightness(1.04)`);
+ if(a.portrait){lay(x,cv,ell(W,H,1,e.pf),.92,W,H,`blur(${6*s}px) brightness(.5)`);lay(x,cv,ell(W,H,0,e.pf),.5,W,H,'brightness(1.15) contrast(1.05)')}
+ if(a.glow){x.globalCompositeOperation='screen';lay(x,cv,null,.35,W,H,`blur(${8*s}px) brightness(1.1)`);x.globalCompositeOperation='source-over'}
+ if(a.vig){const g=x.createRadialGradient(W/2,H/2,Math.min(W,H)*.3,W/2,H/2,Math.hypot(W,H)/2);g.addColorStop(0,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(0,0,0,.6)');x.fillStyle=g;x.fillRect(0,0,W,H)}
+ for(const k in LT){const L=e.lay&&e.lay[k];if(!L||!L.st.length||!L.v)continue;const m=mk(W,H),g=m.getContext('2d');g.lineCap=g.lineJoin='round';g.strokeStyle='#fff';let mr=0;
+  for(const t of L.st){mr=Math.max(mr,t.r);g.globalCompositeOperation=t.m?'source-over':'destination-out';g.lineWidth=t.r*W;g.beginPath();t.p.forEach((q,i)=>i?g.lineTo(q[0]*W,q[1]*H):g.moveTo(q[0]*W,q[1]*H));if(t.p.length==1)g.lineTo(t.p[0][0]*W+.1,t.p[0][1]*H);g.stroke()}
+  const m2=mk(W,H),g2=m2.getContext('2d');g2.filter=`blur(${mr*W*.38}px)`;g2.drawImage(m,0,0);
+  lay(x,cv,m2,1,W,H,LT[k][1](L.v,s))}
+}
+
+/* ---------- Camera ---------- */
+const vid=$('#v'),frame=$('#frame');let stream,track,ic,caps={},soft=0;
+function layout(){const st=$('#stage'),sw=st.clientWidth,sh=st.clientHeight;let r;if(S.ratio==='full')r=vid.videoWidth&&vid.videoHeight?vid.videoWidth/vid.videoHeight:3/4;else{r=eval(S.ratio.replace(':','/'));if(vid.videoHeight>vid.videoWidth||(!vid.videoWidth&&sh>sw))r=1/r}let w,h;if(sw/sh>r){h=sh;w=h*r}else{w=sw;h=w/r}frame.style.width=w+'px';frame.style.height=h+'px'}
+function applyLook(){vid.style.filter=(PRE[S.filter]||'')+(soft?` brightness(${1+soft*.25})`:'')+(S.night&&gain>1.03?` brightness(${gain.toFixed(2)}) contrast(1.05)`:'');$('#pv').classList.toggle('show',S.portrait);const pvs=$('#pv').style;pvs.setProperty('--px',S.pf.x*100+'%');pvs.setProperty('--py',S.pf.y*100+'%');pvs.setProperty('--ps',S.pf.s);$('#psw').hidden=!S.portrait;$('#ps').value=S.pf.s;$('#m0').classList.toggle('on',!S.portrait);$('#m1').classList.toggle('on',S.portrait)}
+let devId=null,backs=[],lens=0;
+const lnum=l=>{const m=l.match(/(\d+)\D*facing/i);return m?+m[1]:99};
+const rank=a=>(/ultra|tele|macro|depth|zoom|0\.5/i.test(a.label)?1000:0)+lnum(a.label);
+async function start(){
+ try{stream&&stream.getTracks().forEach(t=>t.stop());
+  const get=v=>navigator.mediaDevices.getUserMedia({video:Object.assign({width:{ideal:1280},height:{ideal:960},resizeMode:{ideal:'none'}},v),audio:false});
+  stream=await get(S.face==='user'?{facingMode:'user'}:devId?{deviceId:{exact:devId}}:{facingMode:{ideal:'environment'}});
+  if(S.face!=='user'&&!devId){
+   try{backs=(await navigator.mediaDevices.enumerateDevices()).filter(d=>d.kind==='videoinput'&&/back|rear|environment/i.test(d.label)).sort((a,b)=>rank(a)-rank(b));
+   if(backs[0]){devId=backs[0].deviceId;lens=0;if(devId!==stream.getVideoTracks()[0].getSettings().deviceId){stream.getTracks().forEach(t=>t.stop());stream=await get({deviceId:{exact:devId}})}}}catch{}}
+  $('#lens').hidden=!(S.face!=='user'&&backs.length>1);
+  track=stream.getVideoTracks()[0];ic=window.ImageCapture?new ImageCapture(track):null;caps=track.getCapabilities?track.getCapabilities():{};
+  torchOn=false;dark=0;gain=1;$('#fl').classList.remove('on');if(ic)ic.getPhotoCapabilities().then(pc=>{const a=pc.imageWidth&&pc.imageHeight?pc.imageWidth.max/pc.imageHeight.max:0;if(a&&Math.abs(a-4/3)>.1&&Math.abs(a-3/4)>.1){track.applyConstraints({width:{ideal:1280},height:{ideal:Math.round(1280/Math.max(a,1/a))}}).catch(()=>{})}}).catch(()=>{});
+  vid.srcObject=stream;vid.classList.toggle('mir',S.face==='user');$('#msg').style.display='none';$('#frame').style.visibility='';$('#idle').hidden=true;vid.onloadedmetadata=vid.onresize=layout;
+ }catch(e){$('#msg').style.display='flex';$('#frame').style.visibility='hidden'}
+ layout();applyLook();idleReset()}
+async function grab(){
+ const t=RES[S.res];
+ if(ic){try{const pc=await ic.getPhotoCapabilities(),o={};
+  if(pc.imageWidth&&pc.imageHeight){let w=pc.imageWidth.max,h=pc.imageHeight.max;if(t){const L=Math.max(...t);if(L<Math.max(w,h)){const k=L/Math.max(w,h);w=Math.max(pc.imageWidth.min||1,Math.round(w*k));h=Math.max(pc.imageHeight.min||1,Math.round(h*k))}}o.imageWidth=w;o.imageHeight=h}
+  return await ic.takePhoto(o)}catch(e){}}
+ try{if(t)await track.applyConstraints({width:{ideal:Math.max(...t)},height:{ideal:Math.min(...t)}});else await track.applyConstraints({width:{ideal:9999},height:{ideal:9999}});await new Promise(r=>setTimeout(r,450))}catch{}
+ const c=mk(vid.videoWidth,vid.videoHeight);c.getContext('2d').drawImage(vid,0,0);
+ const b=await new Promise(r=>c.toBlob(r,'image/png'));
+ try{await track.applyConstraints({width:{ideal:1280},height:{ideal:960}})}catch{}return b}
+async function addPhoto(blob){
+ const e=newEdit();if(!caps.exposureCompensation)e.adj.br=Math.round(soft*25);
+ const bm=await createImageBitmap(blob),k=240/Math.max(bm.width,bm.height),th=mk(Math.round(bm.width*k),Math.round(bm.height*k));th.getContext('2d').drawImage(bm,0,0,th.width,th.height);bm.close&&bm.close();
+ const thumb=await new Promise(r=>th.toBlob(r,'image/jpeg',.8));
+ const rec={id:Date.now()+'-'+Math.random().toString(36).slice(2,6),ts:Date.now(),blob,thumb,ratio:S.ratio,edit:e};
+ await DB.put(rec);refresh();return rec}
+/* ---------- HDR: exposure fusion (dark areas brighter, bright areas darker) ---------- */
+function boxBlur(a,w,h,r){const t=new Float32Array(a.length),o=new Float32Array(a.length);
+ for(let y=0;y<h;y++)for(let x=0;x<w;x++){let s=0,c=0;for(let k=-r;k<=r;k++){const xx=x+k;if(xx>=0&&xx<w){s+=a[y*w+xx];c++}}t[y*w+x]=s/c}
+ for(let y=0;y<h;y++)for(let x=0;x<w;x++){let s=0,c=0;for(let k=-r;k<=r;k++){const yy=y+k;if(yy>=0&&yy<h){s+=t[yy*w+x];c++}}o[y*w+x]=s/c}
+ return o}
+const mkL=f=>{const L=new Uint8ClampedArray(256);for(let i=0;i<256;i++)L[i]=f(i);return L};
+const VL=[mkL(v=>v*.5),mkL(v=>v),mkL(v=>255*Math.pow(v/255,.5))];
+async function fuse(bms,luts){
+ const W=bms[0].width,H=bms[0].height,n=bms.length,gw=Math.max(16,Math.round(W/8)),gh=Math.max(16,Math.round(H/8));
+ const lc=mk(gw,gh),lg=lc.getContext('2d',{willReadFrequently:true}),Wt=[];
+ for(let k=0;k<n;k++){lg.drawImage(bms[k],0,0,gw,gh);const d=lg.getImageData(0,0,gw,gh).data,L=luts&&luts[k],w=new Float32Array(gw*gh);
+  for(let i=0;i<w.length;i++){let r=d[i*4],g=d[i*4+1],b=d[i*4+2];if(L){r=L[r];g=L[g];b=L[b]}const l=(.2126*r+.7152*g+.0722*b)/255;w[i]=Math.exp(-(l-.5)*(l-.5)/.08)+1e-3}
+  Wt.push(boxBlur(w,gw,gh,3))}
+ const X1=new Int32Array(W),X2=new Int32Array(W),FX=new Float32Array(W);
+ for(let x=0;x<W;x++){const gx=x/Math.max(1,W-1)*(gw-1),a=Math.floor(gx);X1[x]=a;X2[x]=Math.min(gw-1,a+1);FX[x]=gx-a}
+ const out=mk(W,H),og=out.getContext('2d'),BH=192,bc=mk(W,BH),bg=bc.getContext('2d',{willReadFrequently:true}),rw=Wt.map(()=>new Float32Array(gw));
+ for(let y0=0;y0<H;y0+=BH){const bh=Math.min(BH,H-y0),D=[];
+  for(let k=0;k<n;k++){bg.clearRect(0,0,W,BH);const b=bms[k],f=b.height/H;bg.drawImage(b,0,y0*f,b.width,bh*f,0,0,W,bh);D.push(bg.getImageData(0,0,W,bh).data)}
+  const oi=og.createImageData(W,bh),o=oi.data;
+  for(let y=0;y<bh;y++){const gy=(y0+y)/Math.max(1,H-1)*(gh-1),y1=Math.floor(gy),y2=Math.min(gh-1,y1+1),fy=gy-y1;
+   for(let k=0;k<n;k++){const w=Wt[k],r=rw[k];for(let i=0;i<gw;i++)r[i]=w[y1*gw+i]*(1-fy)+w[y2*gw+i]*fy}
+   for(let x=0;x<W;x++){const p=(y*W+x)*4;let sr=0,sg=0,sb=0,sw=0;
+    for(let k=0;k<n;k++){const r=rw[k],ww=r[X1[x]]*(1-FX[x])+r[X2[x]]*FX[x],d=D[k],L=luts&&luts[k];
+     sr+=ww*(L?L[d[p]]:d[p]);sg+=ww*(L?L[d[p+1]]:d[p+1]);sb+=ww*(L?L[d[p+2]]:d[p+2]);sw+=ww}
+    o[p]=sr/sw;o[p+1]=sg/sw;o[p+2]=sb/sw;o[p+3]=255}}
+  og.putImageData(oi,0,y0);await new Promise(r=>setTimeout(r,0))}
+ return await new Promise(r=>out.toBlob(r,'image/png'))}
+async function hdrShoot(){
+ toast('HDR: ফোন স্থির রাখুন, কয়েকটা ছবি তোলা হচ্ছে…');
+ const ec=caps.exposureCompensation,bl=[];
+ if(ec&&ic){const lv=[Math.max(ec.min,-2),0,Math.min(ec.max,2)];
+  try{for(const v of lv){await ac([{exposureMode:'continuous'},{exposureCompensation:v}]);await new Promise(r=>setTimeout(r,500));bl.push(await grab())}}catch{bl.length=0}
+  try{await ac([{exposureCompensation:dark?ec.max*.6:0}])}catch{}}
+ let out;
+ if(bl.length===3){const bms=await Promise.all(bl.map(b=>createImageBitmap(b)));out=await fuse(bms,null);bms.forEach(b=>b.close&&b.close())}
+ else{const b=await grab(),bm=await createImageBitmap(b);out=await fuse([bm,bm,bm],VL);bm.close&&bm.close()}
+ return out}
+async function nightLift(b){try{const bm=await createImageBitmap(b),sc=mk(64,48),s2=sc.getContext('2d');s2.drawImage(bm,0,0,64,48);const dd=s2.getImageData(0,0,64,48).data;const a=[];for(let i=0;i<dd.length;i+=4)a.push(.2126*dd[i]+.7152*dd[i+1]+.0722*dd[i+2]);a.sort((x,y)=>x-y);const m=a[Math.floor(a.length*.75)];
+ if(m>=100){bm.close&&bm.close();return b}
+ const p=Math.max(.45,Math.log(130/255)/Math.log(Math.max(m,8)/255)),L=new Uint8ClampedArray(256);for(let i=0;i<256;i++)L[i]=255*Math.pow(i/255,p);
+ const c=mk(bm.width,bm.height),g=c.getContext('2d');g.drawImage(bm,0,0);bm.close&&bm.close();const im=g.getImageData(0,0,c.width,c.height),d=im.data;for(let i=0;i<d.length;i+=4){d[i]=L[d[i]];d[i+1]=L[d[i+1]];d[i+2]=L[d[i+2]]}g.putImageData(im,0,0);
+ return await new Promise(r=>c.toBlob(r,'image/png'))}catch{return b}}
+async function flipBlob(b){const bm=await createImageBitmap(b),c=mk(bm.width,bm.height),g=c.getContext('2d');g.translate(bm.width,0);g.scale(-1,1);g.drawImage(bm,0,0);bm.close&&bm.close();return await new Promise(r=>c.toBlob(r,'image/png'))}
+async function shoot(){
+ if(!track){toast('ক্যামেরা চালু হচ্ছে, আবার চাপুন');return}
+ const f=$('#flash');f.style.transition='none';f.style.opacity=.8;requestAnimationFrame(()=>{f.style.transition='opacity .25s';f.style.opacity=0});
+ try{let b=await grab();if(S.night)b=await nightLift(b);if(S.face==='user')b=await flipBlob(b);await addPhoto(b);toast('ছবি সেভ হয়েছে — গ্যালারি থেকে এডিট করুন')}catch(e){toast('ছবি তোলা যায়নি')}}
+
+/* tap to focus + exposure */
+frame.addEventListener('pointerdown',async ev=>{
+ if(ev.target.id==='ex')return;const r=frame.getBoundingClientRect(),px=ev.clientX-r.left,py=ev.clientY-r.top,ring=$('#ring'),ex=$('#ex');if(S.portrait){S.pf.x=px/r.width;S.pf.y=py/r.height;applyLook();sv()}
+ ring.style.left=px+'px';ring.style.top=py+'px';ring.classList.add('show');ex.style.left=Math.min(px+42,r.width-34)+'px';ex.style.top=Math.max(4,Math.min(py-55,r.height-114))+'px';if(caps.exposureCompensation)ex.classList.add('show');
+ clearTimeout(frame.t);frame.t=setTimeout(()=>{ring.classList.remove('show');ex.classList.remove('show')},3500);
+ try{const a={pointsOfInterest:[{x:S.face==='user'?1-px/r.width:px/r.width,y:py/r.height}]};if(caps.focusMode&&caps.focusMode.includes('single-shot'))a.focusMode='single-shot';await ac([a])}catch{}});
+frame.addEventListener('pointermove',ev=>{if(ev.buttons&&S.portrait&&ev.target.id!=='ex'){const r=frame.getBoundingClientRect();S.pf.x=Math.max(0,Math.min(1,(ev.clientX-r.left)/r.width));S.pf.y=Math.max(0,Math.min(1,(ev.clientY-r.top)/r.height));applyLook()}});
+$('#ps').oninput=e=>{S.pf.s=+e.target.value;sv();applyLook()};
+$('#ex').oninput=async e=>{const v=+e.target.value;clearTimeout(frame.t);frame.t=setTimeout(()=>{$('#ring').classList.remove('show');$('#ex').classList.remove('show')},3500);
+ if(caps.exposureCompensation){const c=caps.exposureCompensation;try{await ac([{exposureCompensation:Math.max(c.min,Math.min(c.max,v*(c.max||2)/2))}]);return}catch{}}
+ soft=v;applyLook()};
+
+/* ---------- UI wiring: camera ---------- */
+$('#ratios').innerHTML=RATIOS.map(r=>`<button data-r="${r}">${r==='full'?'ফুল':r}</button>`).join('');
+$('#ratios').onclick=e=>{const r=e.target.dataset.r;if(!r)return;S.ratio=r;sv();syncUI();layout()};
+$('#fs').innerHTML=Object.keys(PRE).map(k=>`<button data-f="${k}">${FN[k]}</button>`).join('');
+$('#fs').onclick=e=>{const f=e.target.dataset.f;if(!f)return;S.filter=f;sv();syncUI();applyLook()};
+$('#m0').onclick=()=>{S.portrait=false;sv();applyLook()};$('#m1').onclick=()=>{S.portrait=true;sv();applyLook()};
+$('#res').onchange=e=>{S.res=e.target.value;sv()};
+$('#flip').onclick=()=>{S.face=S.face==='user'?'environment':'user';devId=null;backs=[];sv();start()};
+$('#lens').onclick=()=>{lens=(lens+1)%backs.length;devId=backs[lens].deviceId;toast(lens===0?'মেইন ক্যামেরা':'লেন্স '+bn(lens+1));start()};
+$('#shot').onclick=shoot;
+$('#up').onclick=()=>$('#file').click();
+$('#file').onchange=async e=>{const f=e.target.files[0];if(f){await addPhoto(f);toast('ছবি সেভ হয়েছে');e.target.value=''}};
+function syncUI(){document.querySelectorAll('#ratios button').forEach(b=>b.classList.toggle('on',b.dataset.r===S.ratio));document.querySelectorAll('#fs button').forEach(b=>b.classList.toggle('on',b.dataset.f===S.filter));$('#res').value=S.res;$('#nt').classList.toggle('on',S.night)}
+addEventListener('resize',layout);
+function show(v){['cam','glr'].forEach(i=>$('#'+i).classList.toggle('show',i===v));$('#n1').classList.toggle('on',v==='cam');$('#n2').classList.toggle('on',v==='glr');if(v==='glr')refresh();else{layout();if(!stream||!stream.active)start()}}
+$('#n1').onclick=()=>show('cam');$('#n2').onclick=()=>show('glr');
+$('#gb').onclick=()=>show('glr');$('#gback').onclick=()=>show('cam');
+let torchOn=false;
+$('#fl').onclick=async()=>{if(!track||!caps.torch){toast('এই ক্যামেরায় ফ্ল্যাশলাইট সাপোর্ট হয় না');return}try{torchOn=!torchOn;await ac([{torch:torchOn}]);$('#fl').classList.toggle('on',torchOn)}catch{torchOn=false;$('#fl').classList.remove('on');toast('ফ্ল্যাশলাইট চালু হয়নি')}};
+
+/* ---------- Gallery ---------- */
+const urls=new Map();
+async function refresh(){
+ await purge();const a=(await DB.all()).sort((x,y)=>y.ts-x.ts);$('#cnt').textContent=a.length?'('+bn(a.length)+')':'';
+ urls.forEach(u=>URL.revokeObjectURL(u));urls.clear();
+ const lt=$('#lt');if(a[0]){lt.hidden=false;lt.src=URL.createObjectURL(a[0].thumb);urls.set('lt',lt.src)}else lt.hidden=true;
+ const g=$('#gg');g.innerHTML=a.length?'':'<p class="hint">এখনো কোনো ছবি নেই। ক্যামেরা থেকে একটা ছবি তুলুন।</p>';
+ for(const p of a){const left=Math.max(0,(TTL-(Date.now()-p.ts))/36e5),u=URL.createObjectURL(p.thumb);urls.set(p.id,u);
+  const d=document.createElement('div');d.className='card';d.innerHTML=`<img src="${u}" alt="ছবি"><div class="m${left<6?' w':''}"><span>${bn(Math.ceil(left))} ঘণ্টা বাকি</span><span><button data-a="dl">⬇</button> <button data-a="rm" aria-label="মুছুন">🗑</button></span></div>`;
+  d.querySelector('img').onclick=()=>openEd(p.id);
+  d.querySelector('[data-a=dl]').onclick=()=>dl(p.blob,`photo-${p.ts}.${p.blob.type.includes('png')?'png':'jpg'}`);
+  d.querySelector('[data-a=rm]').onclick=async()=>{await DB.del(p.id);refresh()};g.appendChild(d)}}
+$('#lt').onclick=()=>show('glr');
+async function dl(blob,name){
+ let d=null;try{d=window.claude&&await claude.use('downloads')}catch{}
+ if(d){try{await d.save({filename:name,data:blob});toast('সেভ হয়েছে')}catch(e){if(e.code!=='declined')toast('সেভ হয়নি ('+e.code+')')}return}
+ const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),4e3)}
+
+/* ---------- Editor ---------- */
+let R,E,SRC,FULL,tab='f',busy=0,ecv=$('#ecv');
+const SL=[['br','উজ্জ্বলতা',-100,100],['ct','কনট্রাস্ট',-100,100],['sa','স্যাচুরেশন',-100,100],['hu','হিউ',-180,180]];
+const AI=[['auto','অটো এনহ্যান্স'],['portrait','পোট্রেট রিলাইট'],['smooth','স্কিন স্মুথ'],['hdr','DRO (ছায়া উজ্জ্বল, আলো নরম)'],['night','নাইট বুস্ট'],['glow','ড্রিম গ্লো'],['vig','ভিগনেট']];
+const TABS=[['f','ফিল্টার'],['a','AI মোড'],['c','ক্রপ'],['r','রং বদল'],['j','সমন্বয়'],['b','ব্রাশ']];
+let brush={m:1,r:.05,t:'br'};
+function draw(){if(busy)return;busy=1;requestAnimationFrame(()=>{busy=0;render(ecv,SRC,R.ratio,E);if(tab==='a'&&(E.ai.portrait||E.ai.smooth)){const g=ecv.getContext('2d'),W=ecv.width,H=ecv.height,f=E.pf;g.save();g.setLineDash([8,6]);g.lineWidth=Math.max(2,W/400);g.strokeStyle='#fff';g.beginPath();g.ellipse(W*f.x,H*f.y,W*.42*f.s,H*.5*f.s,0,0,7);g.stroke();g.restore()}})}
+function save2(){clearTimeout(save2.t);save2.t=setTimeout(()=>{R.edit=E;DB.put(R)},500)}
+function autoCalc(){const t=mk(96,96),g=t.getContext('2d');g.drawImage(SRC,0,0,96,96);const d=g.getImageData(0,0,96,96).data;let s=0,q=0,n=d.length/4;for(let i=0;i<d.length;i+=4){const l=.2126*d[i]+.7152*d[i+1]+.0722*d[i+2];s+=l;q+=l*l}const m=s/n,sd=Math.sqrt(q/n-m*m);return{br:Math.round(Math.max(-30,Math.min(40,(118-m)/1.6))),ct:Math.round(Math.max(-10,Math.min(35,(58-sd)*1.1))),sa:12}}
+function sliders(o,list){return list.map(([k,l,a,b])=>`<label class="sl"><span>${l}</span><input type="range" min="${a}" max="${b}" value="${o[k]}" data-k="${k}"><span>${bn(o[k])}</span></label>`).join('')}
+function bindSl(root,o){root.querySelectorAll('input[data-k]').forEach(i=>i.oninput=()=>{o[i.dataset.k]=+i.value;i.parentNode.lastChild.textContent=bn(i.value);draw();save2()})}
+const toolStrip=()=>'<div class="strip">'+Object.keys(LT).map(k=>`<button data-t2="${k}" class="${brush.t===k?'on':''}">${LT[k][0]}${E.lay[k].st.length?' •':''}</button>`).join('')+'</div>';
+const layUI=()=>{const L=E.lay[brush.t];return `<label class="sl"><span>${LT[brush.t][0]} মাত্রা</span><input type="range" min="${brush.t==='bl'?0:-100}" max="100" value="${L.v}" id="lv"><span>${bn(L.v)}</span></label>`};
+const layBind=p=>{p.querySelectorAll('[data-t2]').forEach(b=>b.onclick=()=>{brush.t=b.dataset.t2;panel()});const i=p.querySelector('#lv');i.oninput=()=>{E.lay[brush.t].v=+i.value;i.parentNode.lastChild.textContent=bn(i.value);draw();save2()}};
+function panel(){
+ const p=$('#pan');p.oninput=null;document.querySelectorAll('#tabs button').forEach(b=>b.classList.toggle('on',b.dataset.t===tab));
+ if(tab==='f'){p.innerHTML='<div class="strip">'+Object.keys(PRE).map(k=>`<button data-f="${k}" class="${E.filter===k?'on':''}">${FN[k]}</button>`).join('')+'</div>';p.onclick=e=>{const f=e.target.dataset.f;if(f){E.filter=f;p.querySelectorAll('[data-f]').forEach(b=>b.classList.toggle('on',b.dataset.f===f));draw();save2()}};const s0=p.querySelector('.strip'),o0=s0.querySelector('.on');if(o0)s0.scrollLeft=o0.getBoundingClientRect().left-s0.getBoundingClientRect().left+s0.scrollLeft-s0.clientWidth/2+o0.offsetWidth/2}
+ else if(tab==='a'){p.innerHTML='<div class="strip" style="flex-wrap:wrap">'+AI.map(([k,l])=>`<button data-a="${k}" class="${E.ai[k]?'on':''}">${l}</button>`).join('')+'</div>'+((E.ai.portrait||E.ai.smooth)?`<label class="sl"><span>বিষয়ের আয়তন</span><input type="range" id="ps2" min=".4" max="1.8" step=".05" value="${E.pf.s}"><span></span></label><p class="hint">ছবিতে ট্যাপ করুন বা টানুন, বিষয়ের জায়গা সেখানে সরে যাবে।</p>`:'');if(E.ai.portrait||E.ai.smooth)p.querySelector('#ps2').oninput=e=>{E.pf.s=+e.target.value;draw();save2()};
+  if(E.ai.hdr){const l=document.createElement('label');l.className='sl';l.innerHTML=`<span>DRO মাত্রা</span><input type="range" min="0" max="100" value="${E.ai.dro==null?60:E.ai.dro}"><span></span>`;p.appendChild(l);l.querySelector('input').oninput=e=>{E.ai.dro=+e.target.value;draw();save2()}}
+  p.onclick=e=>{const k=e.target.dataset.a;if(!k)return;if(k==='auto')E.ai.auto=E.ai.auto?null:autoCalc();else E.ai[k]=!E.ai[k];panel();draw();save2()}}
+ else if(tab==='r'){p.innerHTML=`<div class="strip"><button data-add="1">+ নতুন রং বদল</button></div>`+E.cr.map((c,i)=>`<div class="cr"><div class="crr"><button data-pk="${i}" class="${pick===i?'on':''}">💧 ছবি থেকে</button><input type="color" value="${c.f}" data-cf="${i}"><span>→</span><input type="color" value="${c.t}" data-ct="${i}"><button data-del="${i}">🗑</button></div><label class="sl"><span>টলারেন্স</span><input type="range" min="1" max="100" value="${c.tol}" data-tl="${i}"><span>${bn(c.tol)}</span></label></div>`).join('')+`<p class="hint">${pick>=0?'এখন ছবিতে ট্যাপ করে যে রংটা বদলাতে চান সেটা তুলুন।':'+ চেপে নতুন বদল যোগ করুন। বাঁ রং = যেটা বদলাবে, ডান রং = নতুন রং। টলারেন্স বাড়ালে কাছাকাছি আরও রং ধরা পড়বে।'}</p>`;
+  p.oninput=e=>{const t=e.target,d=t.dataset;if(d.cf!==undefined)E.cr[+d.cf].f=t.value;else if(d.ct!==undefined)E.cr[+d.ct].t=t.value;else if(d.tl!==undefined){E.cr[+d.tl].tol=+t.value;t.parentNode.lastChild.textContent=bn(t.value)}else return;draw();save2()};
+  p.onclick=e=>{const d=e.target.dataset;if(d.add){E.cr.push({f:'#3b82f6',t:'#f43f5e',tol:30});pick=E.cr.length-1;panel();draw();save2()}else if(d.pk!==undefined){pick=pick===+d.pk?-1:+d.pk;panel()}else if(d.del!==undefined){E.cr.splice(+d.del,1);pick=-1;panel();draw();save2()}}}
+ else if(tab==='c'){p.innerHTML='<div class="strip">'+RATIOS.map(r=>`<button data-r="${r}" class="${R.ratio===r?'on':''}">${r==='full'?'ফুল (সেন্সরের পুরোটা)':r}</button>`).join('')+'</div><p class="hint">ফুল দিলে ছবির কোনো অংশ কাটা পড়ে না।</p>';
+  p.onclick=e=>{const r=e.target.dataset.r;if(!r)return;R.ratio=r;const c=cropFor(SRC.width,SRC.height,r);ecv.width=c.w;ecv.height=c.h;fit();p.querySelectorAll('[data-r]').forEach(b=>b.classList.toggle('on',b.dataset.r===r));draw();DB.put(R)}}
+ else if(tab==='j'){p.onclick=null;p.innerHTML=sliders(E.adj,SL);bindSl(p,E.adj)}
+ else{p.onclick=null;p.innerHTML=`${toolStrip()}<div class="strip"><button data-m="1" class="${brush.m?'on':''}">ব্রাশ</button><button data-m="0" class="${brush.m?'':'on'}">ইরেজার</button><button data-c="1">এই লেয়ার মুছুন</button></div><label class="sl"><span>ব্রাশ সাইজ</span><input type="range" min="1" max="20" value="${brush.r*100}" id="bs"><span></span></label><p class="hint">প্রতিটা টুল আলাদা লেয়ার। টুল বেছে ছবির ওপর আঁকুন, নিচের স্লাইডারে মাত্রা ঠিক করুন।</p>`+layUI();
+  layBind(p);p.querySelector('#bs').oninput=e=>brush.r=e.target.value/100;
+  p.querySelectorAll('[data-m]').forEach(b=>b.onclick=()=>{brush.m=+b.dataset.m;panel()});p.querySelector('[data-c]').onclick=()=>{E.lay[brush.t].st=[];draw();panel();save2()}}}
+$('#tabs').innerHTML=TABS.map(([k,l])=>`<button data-t="${k}">${l}</button>`).join('');
+$('#tabs').onclick=e=>{if(e.target.dataset.t){tab=e.target.dataset.t;panel();draw()}};
+async function openEd(id){
+ R=(await DB.all()).find(p=>p.id===id);if(!R)return;E=JSON.parse(JSON.stringify(R.edit||newEdit()));if(!E.lay){E.lay=newLay();delete E.st;delete E.loc}if(!E.pf)E.pf={x:.5,y:.45,s:1};if(!E.cr)E.cr=[];
+ const bm=await createImageBitmap(R.blob);const k=Math.min(1,720/Math.max(bm.width,bm.height));SRC=mk(Math.round(bm.width*k),Math.round(bm.height*k));SRC.getContext('2d').drawImage(bm,0,0,SRC.width,SRC.height);bm.close&&bm.close();
+ const c=cropFor(SRC.width,SRC.height,R.ratio);ecv.width=c.w;ecv.height=c.h;$('#ed').classList.add('show');tab='f';panel();render(ecv,SRC,R.ratio,E);fit()}
+function fit(){const w=$('#ew');ecv.style.width='';ecv.style.height='';const k=Math.min(w.clientWidth/ecv.width,w.clientHeight/ecv.height);ecv.style.width=ecv.width*k+'px';ecv.style.height=ecv.height*k+'px'}
+addEventListener('resize',()=>$('#ed').classList.contains('show')&&fit());
+new ResizeObserver(()=>$('#ed').classList.contains('show')&&fit()).observe($('#ew'));
+let cur=null;
+let pick=-1;const pickAt=e=>{if(pick<0){toast('আগে 💧 চাপুন');return}const r=ecv.getBoundingClientRect(),tc=mk(ecv.width,ecv.height);render(tc,SRC,R.ratio,{...E,cr:[]});const px=Math.max(2,Math.min(tc.width-3,Math.floor((e.clientX-r.left)/r.width*tc.width))),py=Math.max(2,Math.min(tc.height-3,Math.floor((e.clientY-r.top)/r.height*tc.height))),d=tc.getContext('2d').getImageData(px-2,py-2,5,5).data;const a=[0,0,0];for(let i=0;i<d.length;i+=4){a[0]+=d[i];a[1]+=d[i+1];a[2]+=d[i+2]}const n=d.length/4;E.cr[pick].f='#'+a.map(v=>Math.round(v/n).toString(16).padStart(2,'0')).join('');pick=-1;panel();draw();save2()};
+let mvp=0;const spf=e=>{const r=ecv.getBoundingClientRect();E.pf.x=Math.max(0,Math.min(1,(e.clientX-r.left)/r.width));E.pf.y=Math.max(0,Math.min(1,(e.clientY-r.top)/r.height));draw()};
+ecv.onpointerdown=e=>{if(tab==='r'){pickAt(e);return}if(tab==='a'&&(E.ai.portrait||E.ai.smooth)){ecv.setPointerCapture(e.pointerId);mvp=1;spf(e);return}if(tab!=='b')return;ecv.setPointerCapture(e.pointerId);const r=ecv.getBoundingClientRect();cur={m:brush.m,r:brush.r,p:[[(e.clientX-r.left)/r.width,(e.clientY-r.top)/r.height]]};E.lay[brush.t].st.push(cur);draw()};
+ecv.onpointermove=e=>{if(mvp){spf(e);return}if(!cur)return;const r=ecv.getBoundingClientRect();cur.p.push([(e.clientX-r.left)/r.width,(e.clientY-r.top)/r.height]);draw()};
+ecv.onpointerup=ecv.onpointercancel=()=>{if(mvp){mvp=0;save2()}if(cur){cur=null;save2()}};
+$('#eb').onclick=()=>{$('#ed').classList.remove('show');clearTimeout(save2.t);R.edit=E;DB.put(R).then(refresh)};
+$('#er').onclick=()=>{E=newEdit();panel();draw();save2()};
+$('#d0').onclick=()=>dl(R.blob,`photo-${R.ts}-original.${R.blob.type.includes('png')?'png':'jpg'}`);
+$('#d1').onclick=async()=>{toast('ফুল রেজুলেশনে প্রসেস হচ্ছে…');await new Promise(r=>setTimeout(r,60));
+ const FULL=await createImageBitmap(R.blob),c=cropFor(FULL.width,FULL.height,R.ratio),cv=mk(c.w,c.h);render(cv,FULL,R.ratio,E);FULL.close&&FULL.close();
+ const b=await new Promise(r=>cv.toBlob(r,'image/png'));dl(b,`photo-${R.ts}-edited.png`)};
+
+/* ---------- Auto night ---------- */
+const ac=adv=>{const s=track.getSettings();return track.applyConstraints({width:{ideal:s.width},height:{ideal:s.height},advanced:adv})};
+let gain=1,dark=0;const smp=mk(32,24),sgx=smp.getContext('2d',{willReadFrequently:true});
+$('#nt').onclick=()=>{S.night=!S.night;sv();$('#nt').classList.toggle('on',S.night);if(!S.night){gain=1;if(dark&&track&&caps.exposureCompensation){dark=0;ac([{exposureCompensation:0}]).catch(()=>{})}}applyLook()};
+setInterval(()=>{if(!S.night||!stream||!stream.active||!vid.videoWidth||vid.paused)return;
+ try{sgx.drawImage(vid,0,0,32,24);const d=sgx.getImageData(0,0,32,24).data,a=[];for(let i=0;i<d.length;i+=4)a.push(.2126*d[i]+.7152*d[i+1]+.0722*d[i+2]);a.sort((x,y)=>x-y);const m=Math.max(4,a[Math.floor(a.length*.75)]);
+  gain=gain*.6+(m<110?Math.max(1,Math.min(3.2,130/m)):1)*.4;const ec=caps.exposureCompensation;
+  if(ec&&track){if(m<60&&!dark){dark=1;ac([{exposureMode:'continuous'},{exposureCompensation:ec.max*.6}]).catch(()=>{})}else if(m>105&&dark){dark=0;ac([{exposureCompensation:0}]).catch(()=>{})}}
+  applyLook()}catch{}},700);
+/* ---------- Idle auto-off (30s) ---------- */
+let idleT=null,starting=0;
+function idleReset(){clearTimeout(idleT);if(stream&&stream.active)idleT=setTimeout(idleOff,30000)}
+function idleOff(){if(!stream)return;stream.getTracks().forEach(t=>t.stop());stream=null;track=null;ic=null;vid.srcObject=null;$('#idle').hidden=false}
+document.addEventListener('pointerdown',()=>{if(!$('#cam').classList.contains('show')||$('#ed').classList.contains('show'))return;if(!stream||!stream.active){if(!starting){starting=1;start().finally(()=>starting=0)}}else idleReset()},{passive:true});
+/* ---------- Boot ---------- */
+(async()=>{await DB.open();await purge();syncUI();await refresh();start();setInterval(()=>{purge().then(()=>$('#glr').classList.contains('show')&&refresh())},6e4)})();
+</script></body></html>
