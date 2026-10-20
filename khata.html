@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>পকেট লেজার</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;500;600;700&display=swap" />
+<style>
+:root {
+  color-scheme: light dark;
+  --page: #ececea; --frame: #363636; --frame-line: #222;
+  --card: #d6d6d6; --ink: #1f1f1f; --muted: #5d5d5d; --line: #b9b9b9;
+  --field: #efefef; --btn: #363636; --btn-ink: #fff;
+  --in: #1f6b43; --out: #b03a2e;
+  box-sizing: border-box;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --page: #161616; --frame: #2b2b2b; --frame-line: #0e0e0e; }
+}
+:root[data-theme="dark"] { --page: #161616; --frame: #2b2b2b; --frame-line: #0e0e0e; }
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+html { scroll-padding-top: env(safe-area-inset-top, 0px); }
+body { background: var(--page); color: var(--ink); font-family: "Noto Sans Bengali", system-ui, sans-serif; display: flex; justify-content: center; }
+.frame {
+  width: 100%; max-width: 460px; height: 100%; display: flex; flex-direction: column; gap: 12px;
+  background: var(--frame); border: 3px solid var(--frame-line); padding: 14px;
+}
+@media (min-width: 520px) { .frame { height: min(100%, 880px); margin: auto; border-radius: 10px; } }
+.card { background: var(--card); color: var(--ink); border: 3px solid var(--frame-line); }
+
+/* 1. মোট টাকা */
+.total { border-radius: 36px / 28px; padding: 16px 20px; text-align: center; flex: none; }
+.total .lbl { font-size: 15px; color: var(--muted); font-weight: 500; }
+.total .sum { font-size: 38px; font-weight: 700; line-height: 1.25; }
+.total .sum.neg { color: var(--out); }
+.total .split { display: flex; justify-content: center; gap: 22px; font-size: 13px; font-weight: 600; }
+.in { color: var(--in); } .out { color: var(--out); }
+
+/* 2. ইনপুট */
+.entry { padding: 12px; flex: none; }
+.entry form { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.field { width: 100%; font: inherit; font-size: 15px; color: var(--ink); background: var(--field); border: 1.5px solid var(--line); border-radius: 6px; padding: 9px 10px; min-width: 0; }
+.field:focus-visible, button:focus-visible { outline: 3px solid #6b6b6b; outline-offset: 1px; }
+.seg { display: grid; grid-template-columns: 1fr 1fr; border: 1.5px solid var(--line); border-radius: 6px; overflow: hidden; background: var(--field); }
+.seg button { border: 0; background: transparent; font: inherit; font-size: 15px; font-weight: 600; color: var(--muted); cursor: pointer; padding: 9px 4px; }
+.seg button.on[data-t="expense"] { background: var(--out); color: #fff; }
+.seg button.on[data-t="income"] { background: var(--in); color: #fff; }
+.span2 { grid-column: 1 / -1; }
+.add { grid-column: 1 / -1; border: 0; background: var(--btn); color: var(--btn-ink); font: inherit; font-weight: 700; font-size: 16px; padding: 11px; border-radius: 6px; cursor: pointer; }
+.add:active { transform: scale(.985); }
+.err { grid-column: 1 / -1; margin: 0; font-size: 13px; color: var(--out); font-weight: 600; }
+.err[hidden] { display: none; }
+
+/* 3. সকল হিস্টোরি */
+.history { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 12px; }
+.hhead { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.hhead h2 { margin: 0; font-size: 17px; font-weight: 700; }
+.pills { display: flex; gap: 6px; }
+.pill { border: 1.5px solid var(--line); background: var(--field); font: inherit; font-size: 13px; padding: 3px 11px; border-radius: 99px; cursor: pointer; color: var(--muted); }
+.pill.on { background: var(--btn); color: #fff; border-color: var(--btn); }
+.list { flex: 1; overflow-y: auto; overscroll-behavior: contain; }
+.row { display: flex; align-items: center; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--line); }
+.row:last-child { border-bottom: 0; }
+.row .mid { flex: 1; min-width: 0; }
+.row .nm { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row .sub { font-size: 12px; color: var(--muted); }
+.row .amt { font-weight: 700; font-size: 15px; text-align: right; }
+.del { border: 0; background: none; color: var(--muted); font: inherit; font-size: 12px; cursor: pointer; padding: 0; text-decoration: underline; }
+.empty { text-align: center; color: var(--muted); padding: 28px 8px; font-size: 14px; }
+.foot { display: flex; justify-content: flex-end; padding-top: 6px; }
+.clear { border: 0; background: none; color: var(--out); font: inherit; font-size: 12px; font-weight: 600; cursor: pointer; }
+</style>
+</head>
+<body>
+<div class="frame">
+
+  <section class="card total" aria-label="মোট টাকা">
+    <div class="lbl">মোট টাকা</div>
+    <div class="sum" id="balance">৳০</div>
+    <div class="split"><span class="in">আয় <span id="inc">৳০</span></span><span class="out">খরচ <span id="exp">৳০</span></span></div>
+  </section>
+
+  <section class="card entry" aria-label="নতুন ট্রানজেকশন">
+    <form id="form">
+      <input id="amount" class="field" type="number" inputmode="decimal" min="0.01" step="0.01" placeholder="টাকার পরিমাণ" aria-label="টাকার পরিমাণ" required />
+      <div class="seg" role="group" aria-label="ধরন">
+        <button type="button" class="on" data-t="expense">খরচ</button>
+        <button type="button" data-t="income">আয়</button>
+      </div>
+      <select id="category" class="field" aria-label="ক্যাটাগরি"></select>
+      <input id="date" class="field" type="date" aria-label="তারিখ" required />
+      <input id="note" class="field span2" type="text" maxlength="90" placeholder="নোট (ঐচ্ছিক), যেমন: দুপুরের খাবার" aria-label="নোট" />
+      <p id="err" class="err" role="alert" hidden></p>
+      <button class="add" type="submit">যোগ করুন</button>
+    </form>
+  </section>
+
+  <section class="card history" aria-label="সকল হিস্টোরি">
+    <div class="hhead">
+      <h2>সকল হিস্টোরি</h2>
+      <div class="pills">
+        <button class="pill on" data-f="all" type="button">সব</button>
+        <button class="pill" data-f="income" type="button">আয়</button>
+        <button class="pill" data-f="expense" type="button">খরচ</button>
+      </div>
+    </div>
+    <div class="list" id="list"></div>
+    <div class="foot"><button class="clear" id="clear" type="button">সব মুছুন</button></div>
+  </section>
+
+</div>
+
+<script>
+const KEY = 'pocket-ledger-transactions-v1';
+const CATS = { Food: 'খাবার', Travel: 'যাতায়াত', Shopping: 'কেনাকাটা', Bills: 'বিল', Salary: 'বেতন', Entertainment: 'বিনোদন', Others: 'অন্যান্য' };
+const $ = id => document.getElementById(id);
+const num = new Intl.NumberFormat('bn-BD', { maximumFractionDigits: 2 });
+const money = v => (v < 0 ? '−' : '') + '৳' + num.format(Math.abs(v));
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const fmtDate = v => { const d = new Date(v + 'T12:00:00'); return isNaN(d) ? v : d.toLocaleDateString('bn-BD', { day: 'numeric', month: 'short', year: 'numeric' }); };
+
+let tx = [], type = 'expense', filter = 'all';
+try { const p = JSON.parse(localStorage.getItem(KEY) || '[]'); if (Array.isArray(p)) tx = p.filter(t => t && typeof t.id === 'string' && Number.isFinite(+t.amount) && ['income','expense'].includes(t.type)); } catch (e) {}
+const save = () => { try { localStorage.setItem(KEY, JSON.stringify(tx)); } catch (e) { showErr('এই ব্রাউজারে সেভ করা যাচ্ছে না।'); } };
+const showErr = m => { $('err').textContent = m; $('err').hidden = false; };
+
+$('category').innerHTML = Object.entries(CATS).map(([k, v]) => `<option value="${k}">${v}</option>`).join('');
+const t0 = new Date();
+$('date').value = `${t0.getFullYear()}-${String(t0.getMonth()+1).padStart(2,'0')}-${String(t0.getDate()).padStart(2,'0')}`;
+
+function render() {
+  const inc = tx.filter(t => t.type === 'income').reduce((s, t) => s + +t.amount, 0);
+  const exp = tx.filter(t => t.type === 'expense').reduce((s, t) => s + +t.amount, 0);
+  $('inc').textContent = money(inc); $('exp').textContent = money(exp);
+  $('balance').textContent = money(inc - exp);
+  $('balance').classList.toggle('neg', inc - exp < 0);
+  const rows = tx.filter(t => filter === 'all' || t.type === filter)
+    .sort((a, b) => b.date.localeCompare(a.date) || (b.createdAt || 0) - (a.createdAt || 0));
+  $('list').innerHTML = rows.length ? rows.map(t => `
+    <div class="row">
+      <div class="mid">
+        <div class="nm">${esc(t.note || CATS[t.category] || t.category)}</div>
+        <div class="sub">${esc(CATS[t.category] || t.category)} · ${esc(fmtDate(t.date))}</div>
+      </div>
+      <div>
+        <div class="amt ${t.type === 'income' ? 'in' : 'out'}">${t.type === 'income' ? '+' : '−'}${money(+t.amount)}</div>
+        <div style="text-align:right"><button class="del" type="button" data-del="${esc(t.id)}">মুছুন</button></div>
+      </div>
+    </div>`).join('') : '<div class="empty">কিছু নেই। উপরে থেকে প্রথম ট্রানজেকশন যোগ করুন।</div>';
+}
+
+document.querySelectorAll('.seg button').forEach(b => b.addEventListener('click', () => {
+  type = b.dataset.t;
+  document.querySelectorAll('.seg button').forEach(x => x.classList.toggle('on', x === b));
+}));
+document.querySelectorAll('.pill').forEach(b => b.addEventListener('click', () => {
+  filter = b.dataset.f;
+  document.querySelectorAll('.pill').forEach(x => x.classList.toggle('on', x === b));
+  render();
+}));
+$('form').addEventListener('submit', e => {
+  e.preventDefault(); $('err').hidden = true;
+  const amount = Number($('amount').value), date = $('date').value;
+  if (!Number.isFinite(amount) || amount <= 0) return showErr('০ এর চেয়ে বেশি টাকা লিখুন।');
+  if (!date) return showErr('তারিখ বেছে নিন।');
+  tx.push({ id: crypto.randomUUID ? crypto.randomUUID() : Date.now() + '-' + Math.random().toString(16).slice(2),
+    amount: Math.round(amount * 100) / 100, type, category: $('category').value, date, note: $('note').value.trim(), createdAt: Date.now() });
+  save(); $('amount').value = ''; $('note').value = ''; render();
+});
+$('list').addEventListener('click', e => {
+  const b = e.target.closest('[data-del]'); if (!b) return;
+  tx = tx.filter(t => t.id !== b.dataset.del); save(); render();
+});
+$('clear').addEventListener('click', () => {
+  if (tx.length && confirm('সব ট্রানজেকশন মুছে ফেলবেন? এটি আর ফেরানো যাবে না।')) { tx = []; save(); render(); }
+});
+render();
+</script>
+</body>
+</html>
