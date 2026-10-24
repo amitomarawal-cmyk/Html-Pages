@@ -308,6 +308,8 @@ let selOn=0;
 document.addEventListener('selectionchange',()=>{const s=getSelection(),inEd=s.rangeCount&&ed.contains(s.anchorNode);
   if(inEd){saved=s.getRangeAt(0).cloneRange();uiq()}
   const on=!!(inEd&&!s.isCollapsed);
+  if(on&&rest.length){const r=s.getRangeAt(0),t=document.createRange();t.setStart(r.endContainer,r.endOffset);t.setEnd(ed,ed.childNodes.length);
+    if(!t.toString().trim()){loadAll();r.setEnd(ed,ed.childNodes.length);s.removeAllRanges();s.addRange(r)}}
   if(on&&!selOn){selOn=1;ed.querySelectorAll(':scope>[data-sk]').forEach(b=>b.removeAttribute('data-sk'))}
   else if(!on&&selOn){selOn=0;later(0)}});
 let uq=0;const uiq=()=>{clearTimeout(uq);uq=setTimeout(()=>{uq=0;if(comp){uiq();return}ui()},250)};
