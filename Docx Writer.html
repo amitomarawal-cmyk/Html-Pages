@@ -19,7 +19,7 @@ button,select,input{font:inherit;color:inherit}
 #wrap{flex:1;overflow:auto;padding:14px 8px 60px;position:relative}
 #cnt{position:absolute;left:12px;bottom:10px;background:rgba(235,235,235,.95);color:#666;border-radius:6px;padding:4px 10px;font-size:14px}
 #ed{background:#fff;margin:0 auto;width:min(100%,var(--pw));min-height:var(--ph);padding:min(var(--mm),6vw);outline:0;box-shadow:0 1px 4px rgba(0,0,0,.25);font:11pt/normal Calibri,Carlito,"Segoe UI","Noto Sans Bengali",Roboto,Arial,sans-serif;color:#1f1f1f;overflow-wrap:anywhere}
-#ed p{margin:0 0 6pt}
+#ed p{margin:0}
 #ed h1{font-size:18pt;margin:14pt 0 6pt}#ed h2{font-size:14pt;margin:16pt 0 6pt}#ed h3{font-size:12pt;margin:12pt 0 2pt}
 #ed li{margin:0 0 3pt}
 #ed blockquote{margin:0 0 0 32px}
@@ -304,7 +304,12 @@ const dl=(b,n)=>{const a=document.createElement('a');a.href=URL.createObjectURL(
 
 /* ---------- selection / exec ---------- */
 let saved=null;
-document.addEventListener('selectionchange',()=>{const s=getSelection();if(s.rangeCount&&ed.contains(s.anchorNode)){saved=s.getRangeAt(0).cloneRange();uiq()}});
+let selOn=0;
+document.addEventListener('selectionchange',()=>{const s=getSelection(),inEd=s.rangeCount&&ed.contains(s.anchorNode);
+  if(inEd){saved=s.getRangeAt(0).cloneRange();uiq()}
+  const on=!!(inEd&&!s.isCollapsed);
+  if(on&&!selOn){selOn=1;ed.querySelectorAll(':scope>[data-sk]').forEach(b=>b.removeAttribute('data-sk'))}
+  else if(!on&&selOn){selOn=0;later(0)}});
 let uq=0;const uiq=()=>{clearTimeout(uq);uq=setTimeout(()=>{uq=0;if(comp){uiq();return}ui()},250)};
 const rs=()=>{if(document.activeElement!==ed){ed.setAttribute('inputmode','none');ed.focus({preventScroll:true})}if(saved){const s=getSelection();s.removeAllRanges();s.addRange(saved)}};
 const ex=(c,v)=>{rs();document.execCommand('styleWithCSS',false,true);document.execCommand(c,false,v);sync()};
@@ -658,7 +663,7 @@ function pg1(){
     break}};
   for(let i=from;i<=b;i++){const k=bs[i];k.removeAttribute('data-sk');clr(k);fit(k);{const q=k.getBoundingClientRect();k._y=rel(q.top);k._h=q.height/zm}if(k.classList.contains('pb'))fp=1;if(i<lo)skipB(k)}
   okTo=b;return 1}
-function paginate(){if(!pvOn)return;for(let p=0;p<3&&pg1();p++);}
+function paginate(){if(!pvOn||selOn)return;for(let p=0;p<3&&pg1();p++);}
 addEventListener('resize',()=>{if($('#wrap').clientWidth!==lw)view()});
 ed.addEventListener('compositionstart',()=>comp=1);ed.addEventListener('compositionend',()=>{comp=0;later(1)});
 $('#im').addEventListener('pointerdown',e=>{e.preventDefault();e.stopPropagation();const h=e.target,i=sel;if(!i)return;h.setPointerCapture(e.pointerId);const a=i.getBoundingClientRect();
@@ -917,7 +922,7 @@ kn.addEventListener('pointerup',kup);kn.addEventListener('pointercancel',kup);
 /* far-away blocks are not rendered (keeps typing fast in big files); near ones are always fully drawn */
 const io=new IntersectionObserver(es=>es.forEach(en=>{const b=en.target;
   if(en.isIntersecting)b.removeAttribute('data-sk');
-  else if(b.isConnected&&!kd){const h=en.boundingClientRect.height/zm;if(h>0){b.style.containIntrinsicBlockSize=Math.round(h)+'px';b.setAttribute('data-sk','1')}}}),{root:$('#wrap'),rootMargin:'250% 0px'});
+  else if(b.isConnected&&!kd&&!selOn){const h=en.boundingClientRect.height/zm;if(h>0){b.style.containIntrinsicBlockSize=Math.round(h)+'px';b.setAttribute('data-sk','1')}}}),{root:$('#wrap'),rootMargin:'250% 0px'});
 const watch=()=>{for(const b of ed.children)if(!b._w&&!b.classList.contains('pgs')){b._w=1;io.observe(b)}};
 watch();
 idb('get','draft').then(async d=>{if(!d)return;let h=d.h;
