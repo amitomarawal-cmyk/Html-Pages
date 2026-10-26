@@ -62,9 +62,7 @@ dialog .row{display:flex;gap:8px;margin:8px 0;flex-wrap:wrap}
 .fab{position:fixed;right:20px;bottom:20px;width:56px;height:56px;border-radius:16px;border:0;background:#c2e7ff;font-size:30px;cursor:pointer;box-shadow:0 2px 6px rgba(0,0,0,.3);z-index:20}
 #toast{position:fixed;bottom:90px;left:50%;transform:translateX(-50%);background:#323232;color:#fff;padding:9px 18px;border-radius:6px;font-size:14px;opacity:0;pointer-events:none;transition:.25s;z-index:99}
 #toast.on{opacity:1}
-#pa{display:none}
-@page{margin:32mm 38mm}
-@media print{body>*:not(#pa){display:none!important}#pa{display:block;white-space:pre-wrap;word-break:break-word;font-size:15pt;line-height:1.7;color:#000}}
+
 </style>
 </head>
 <body>
@@ -86,7 +84,7 @@ dialog .row{display:flex;gap:8px;margin:8px 0;flex-wrap:wrap}
   <div class="cdots" id="ndCol"></div>
   <div class="mrow"><b id="ndSize"></b>
     <select id="ndMove" title="উইন্ডো"></select>
-    <button class="btn g" id="ndPrint">প্রিন্ট</button>
+    <button class="btn g" id="ndTxtDl">টেক্সট</button>
     <button class="btn d" id="ndDel">মুছুন</button>
     <button class="btn" id="ndClose">বন্ধ</button>
   </div>
@@ -94,7 +92,6 @@ dialog .row{display:flex;gap:8px;margin:8px 0;flex-wrap:wrap}
 
 <dialog id="dlg">
   <h3>সেটিংস</h3>
-  <p style="font-size:13px;color:var(--sub);margin:0">সব নোট ও উইন্ডো একটি .db ফাইলে ব্যাকআপ বা রিস্টোর করুন। নোট এডিট করলে সেটা আবার ৫ বছর থাকে; ৫ বছর এডিট না হলে অটো মুছে যায় — ব্যাকআপ থেকে রিস্টোর করলেও।</p>
   <div class="row">
     <button class="btn" id="bkBtn">⬇ ব্যাকআপ (.db)</button>
     <button class="btn g" id="rsBtn">⬆ রিস্টোর</button>
@@ -105,11 +102,10 @@ dialog .row{display:flex;gap:8px;margin:8px 0;flex-wrap:wrap}
 </dialog>
 <button class="fab" id="fab" title="নতুন নোট">+</button>
 <div id="toast"></div>
-<div id="pa"></div>
 
 <script>
 const PAL=['#faafa8','#f39f76','#fff8b8','#e2f6d3','#b4ddd3','#d4e4ed','#aeccdc','#d3bfdb','#f6e2dd','#e9e3d4'];
-const LIFE=5*365.25*864e5; // শেষ এডিটের পর ৫ বছর
+const LIFE=5*365.25*864e5;
 const $=id=>document.getElementById(id);
 let db=load(),curWin='all';
 
@@ -130,7 +126,7 @@ function save(){try{localStorage.setItem('clipnotes_db',JSON.stringify(db));}cat
 function toast(m){const t=$('toast');t.textContent=m;t.classList.add('on');clearTimeout(t._t);t._t=setTimeout(()=>t.classList.remove('on'),2200);}
 const kbB=b=>(b/1024).toFixed(2)+' KB';
 const enc=new TextEncoder(),cache=new WeakMap();
-function info(n){ // সাইজ ও ছোট-হাতের লেখা একবারই হিসাব হয়
+function info(n){
   let c=cache.get(n);
   if(!c||c.text!==n.text){c={text:n.text,sz:enc.encode(n.text).length,lc:null};cache.set(n,c);}
   return c;
@@ -145,7 +141,6 @@ function purge(){
   if(db.notes.length!==n){save();render();}
 }
 
-/* ---------- render ---------- */
 function render(){
   if(curWin!=='all'&&!db.windows.some(w=>w.id===curWin))curWin='all';
   const tabs=$('tabs');tabs.innerHTML='';
@@ -220,17 +215,20 @@ function card(n){
   const size=document.createElement('span');size.textContent=kbB(info(n).sz);
   const qa=document.createElement('div');qa.className='qa';
   const btn=(t,ti,f)=>{const b=document.createElement('button');b.textContent=t;b.title=ti;b.onclick=e=>{e.stopPropagation();f();};return b;};
-  qa.append(btn('🖨','প্রিন্ট',()=>printTxt(n.text)),btn('🗑','মুছুন',()=>delNote(n)));
+  qa.append(btn('📄','টেক্সট ডাউনলোড',()=>downloadTxt(n.text)),btn('🗑','মুছুন',()=>delNote(n)));
   meta.append(size,qa);d.append(body,meta);
   d.onclick=()=>openNote(n);return d;
 }
-function printTxt(t){$('pa').textContent=t;window.print();}
+function downloadTxt(t){
+  const b=new Blob([t],{type:'text/plain;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(b);
+  a.download='note-'+new Date().toISOString().slice(0,10)+'.txt';
+  document.body.append(a);a.click();a.remove();
+}
 function delNote(n){
   if(!confirm('নোটটি মুছবেন?'))return false;
   db.notes=db.notes.filter(x=>x!==n);save();render();return true;
 }
-
-/* ---------- note dialog ---------- */
 let cur=null,skipSave=false,origColor='',origWin=null,hlQ='';
 const esc=t=>t.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 function paintHl(){
@@ -269,15 +267,14 @@ let szT=0;
 function updSize(){
   if(!cur)return;
   const v=$('ndTxt').value;
-  // UTF-8 byte count: ASCII=1B, বাংলা ইউনিকোড=3B — দ্রুত অনুমান, encode() ছাড়া
   let bytes=0;for(let i=0;i<v.length;i++){const c=v.charCodeAt(i);bytes+=c<0x80?1:c<0x800?2:3;}
   $('ndSize').textContent=kbB(bytes)+' • '+fmt(cur.t);
 }
 $('ndTxt').addEventListener('input',()=>{
-  if(hlQ){hlQ='';$('ndHl').innerHTML='';} // লেখার সময় মার্ক সরে যায়, ভারী কাজ হয় না
+  if(hlQ){hlQ='';$('ndHl').innerHTML='';}
   clearTimeout(szT);szT=setTimeout(updSize,500);
 });
-$('ndPrint').onclick=()=>printTxt($('ndTxt').value);
+$('ndTxtDl').onclick=()=>downloadTxt($('ndTxt').value);
 $('ndDel').onclick=()=>{
   if(cur.isNew||delNote(cur)){skipSave=true;$('nd').close();}
 };
@@ -290,7 +287,7 @@ $('nd').addEventListener('close',()=>{
     if(cur.isNew){
       if(v.trim()){delete cur.isNew;cur.text=v;cur.t=Date.now();db.notes.push(cur);}
     }else if(v.trim()&&(v!==cur.text||cur.color!==origColor||cur.win!==origWin)){
-      cur.text=v;cur.t=Date.now(); // এডিট = নতুন ৫ বছর, লিস্টের শুরুতে
+      cur.text=v;cur.t=Date.now();
     }
     save();render();
   }
@@ -301,8 +298,6 @@ $('fab').onclick=()=>{
   openNote({id,text:'',win:curWin==='all'?null:curWin,color:PAL[id%PAL.length],t:Date.now(),isNew:true});
   $('ndTxt').focus();
 };
-
-/* ---------- search ---------- */
 let hits=[],sel=0;
 function doSearch(){
   const q=$('q').value.trim().toLowerCase(),r=$('res');
@@ -336,8 +331,6 @@ $('q').addEventListener('keydown',e=>{
   }else if(e.key==='Escape')$('res').style.display='none';
 });
 document.addEventListener('click',e=>{if(!e.target.closest('.sw'))$('res').style.display='none';});
-
-/* ---------- settings ---------- */
 $('setBtn').onclick=()=>$('dlg').showModal();
 $('closeBtn').onclick=()=>$('dlg').close();
 $('bkBtn').onclick=()=>{
