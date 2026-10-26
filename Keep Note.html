@@ -170,16 +170,28 @@ function render(){
   list.sort((a,b)=>b.t-a.t).forEach(n=>g.append(card(n)));
   layout();
 }
+let _layoutRaf=0;
 function layout(){
-  const g=$('grid'),items=[...g.children].filter(c=>c.classList.contains('note'));
-  if(!items.length){g.style.height='';return}
-  const gap=12,W=g.clientWidth,cols=Math.max(1,Math.floor((W+gap)/(170+gap))),cw=(W-gap*(cols-1))/cols,hs=Array(cols).fill(0);
-  items.forEach(it=>{it.style.position='absolute';it.style.boxSizing='border-box';it.style.width=cw+'px'});
-  items.forEach(it=>{let c=0;for(let i=1;i<cols;i++)if(hs[i]<hs[c]-0.5)c=i;
-    it.style.left=c*(cw+gap)+'px';it.style.top=hs[c]+'px';hs[c]+=it.offsetHeight+gap});
-  g.style.height=Math.max(...hs)-gap+'px';
+  cancelAnimationFrame(_layoutRaf);
+  _layoutRaf=requestAnimationFrame(()=>{
+    const g=$('grid'),items=[...g.children].filter(c=>c.classList.contains('note'));
+    if(!items.length){g.style.height='';return;}
+    const gap=12,W=g.clientWidth,cols=Math.max(1,Math.floor((W+gap)/(170+gap))),cw=(W-gap*(cols-1))/cols;
+    // ১. আগে সব width সেট করি (write)
+    items.forEach(it=>{it.style.cssText+='position:absolute;box-sizing:border-box;width:'+cw+'px';});
+    // ২. তারপর একসাথে সব height পড়ি (read) — reflow মাত্র একবার
+    const heights=items.map(it=>it.offsetHeight);
+    // ৩. তারপর position লিখি (write)
+    const hs=Array(cols).fill(0);
+    items.forEach((it,idx)=>{
+      let c=0;for(let i=1;i<cols;i++)if(hs[i]<hs[c]-0.5)c=i;
+      it.style.left=c*(cw+gap)+'px';it.style.top=hs[c]+'px';
+      hs[c]+=heights[idx]+gap;
+    });
+    g.style.height=Math.max(...hs)-gap+'px';
+  });
 }
-addEventListener('resize',()=>layout());
+let _resizeT=0;addEventListener('resize',()=>{clearTimeout(_resizeT);_resizeT=setTimeout(layout,120);});
 if(window.ResizeObserver)new ResizeObserver(()=>layout()).observe(document.querySelector('main'));
 if(document.fonts&&document.fonts.ready)document.fonts.ready.then(()=>layout());
 function newWin(){
@@ -229,7 +241,14 @@ function paintHl(){
   while(cnt++<300&&(p=lo.indexOf(q,i))!==-1){out+=esc(t.slice(i,p))+'<mark>'+esc(t.slice(p,p+q.length))+'</mark>';i=p+q.length;}
   h.innerHTML=out+esc(t.slice(i))+'\n';
 }
-$('ndTxt').addEventListener('scroll',()=>{$('ndHl').scrollTop=$('ndTxt').scrollTop;});
+let _scrollRaf=0;
+$('ndTxt').addEventListener('scroll',()=>{
+  if(_scrollRaf)return;
+  _scrollRaf=requestAnimationFrame(()=>{
+    $('ndHl').scrollTop=$('ndTxt').scrollTop;
+    _scrollRaf=0;
+  });
+},{ passive:true });
 function openNote(n,q){
   cur=n;skipSave=false;origColor=n.color;origWin=n.win||null;
   const dlg=$('nd');$('ndTxt').value=n.text;dlg.style.background=n.color;
@@ -247,10 +266,16 @@ function openNote(n,q){
   if(hlQ){const m=$('ndHl').querySelector('mark');if(m){const y=Math.max(0,m.offsetTop-70);$('ndTxt').scrollTop=y;$('ndHl').scrollTop=y;}}
 }
 let szT=0;
-function updSize(){if(cur)$('ndSize').textContent=kbB(enc.encode($('ndTxt').value).length)+' • '+fmt(cur.t);}
+function updSize(){
+  if(!cur)return;
+  const v=$('ndTxt').value;
+  // UTF-8 byte count: ASCII=1B, বাংলা ইউনিকোড=3B — দ্রুত অনুমান, encode() ছাড়া
+  let bytes=0;for(let i=0;i<v.length;i++){const c=v.charCodeAt(i);bytes+=c<0x80?1:c<0x800?2:3;}
+  $('ndSize').textContent=kbB(bytes)+' • '+fmt(cur.t);
+}
 $('ndTxt').addEventListener('input',()=>{
   if(hlQ){hlQ='';$('ndHl').innerHTML='';} // লেখার সময় মার্ক সরে যায়, ভারী কাজ হয় না
-  clearTimeout(szT);szT=setTimeout(updSize,400);
+  clearTimeout(szT);szT=setTimeout(updSize,500);
 });
 $('ndPrint').onclick=()=>printTxt($('ndTxt').value);
 $('ndDel').onclick=()=>{
