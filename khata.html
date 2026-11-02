@@ -181,7 +181,7 @@
                 <div class="flex items-center gap-1">
                     <!-- Mode Switch Toggle -->
                     <button id="btnChartToggle" onclick="toggleChartMode()" class="px-3 py-1.5 text-[11px] font-bold rounded-lg bg-indigo-600 text-white border border-indigo-400/40">
-                        Expenses
+                        In vs Out
                     </button>
                     <!-- Year Select -->
                     <select id="chartYearSelect" onchange="renderCharts()" class="bg-slate-900 border border-slate-800 text-[11px] text-slate-300 rounded-lg px-2 py-1.5 focus:outline-none">
@@ -197,7 +197,7 @@
         </section>
 
         <!-- 4. RECENT TRANSACTIONS LIST -->
-        <section class="glass-card p-3 rounded-2xl shadow-xl border border-slate-800 space-y-2 flex-1 flex flex-col">
+        <section class="glass-card p-3 rounded-2xl shadow-xl border border-slate-800 space-y-2 flex-1 flex flex-col hidden">
             <div class="flex items-center justify-between">
                 <h3 class="text-xs font-bold text-white flex items-center gap-1.5">
                     <i class="fa-solid fa-receipt text-indigo-400"></i> Transaction Log
@@ -249,7 +249,7 @@
         };
 
         let transactions = [];
-        let chartMode = 'expenses'; // 'expenses' or 'comparison'
+        let chartMode = 'comparison'; // 'expenses' or 'comparison'
         let chartInstance = null;
 
         window.onload = function() {
@@ -263,9 +263,26 @@
         function loadData() {
             try {
                 const stored = localStorage.getItem('finflow_mini_data');
+                const cutoffYear = new Date().getFullYear() - 5;
                 if (stored !== null) {
                     const parsed = JSON.parse(stored);
-                    transactions = Array.isArray(parsed) ? parsed.filter(isValidTransaction) : getDemoData();
+                    if (Array.isArray(parsed)) {
+                        const valid = parsed.filter(isValidTransaction);
+                        const old = valid.filter(t => parseInt(t.date.split('-')[0]) <= cutoffYear);
+                        const recent = valid.filter(t => parseInt(t.date.split('-')[0]) > cutoffYear);
+
+                        // Calculate carry forward from old transactions
+                        let existingCarry = parseFloat(localStorage.getItem('finflow_carry_forward') || '0');
+                        let oldNet = old.reduce((sum, t) => t.type === 'income' ? sum + t.amount : sum - t.amount, 0);
+                        if (old.length > 0) {
+                            localStorage.setItem('finflow_carry_forward', existingCarry + oldNet);
+                        }
+
+                        transactions = recent;
+                        saveData();
+                    } else {
+                        transactions = getDemoData();
+                    }
                 } else {
                     transactions = getDemoData();
                     saveData();
@@ -390,7 +407,8 @@
                 if (t.type === 'expense') totalExpense += amt;
             });
 
-            const netBalance = totalIncome - totalExpense;
+            const carryForward = parseFloat(localStorage.getItem('finflow_carry_forward') || '0');
+            const netBalance = totalIncome - totalExpense + carryForward;
 
             document.getElementById('totalBalance').textContent = formatCurrency(netBalance);
             document.getElementById('totalIncome').textContent = formatCurrency(totalIncome);
