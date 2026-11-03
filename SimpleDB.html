@@ -49,7 +49,7 @@ body[data-m=fm] .sh,body[data-m=sh] .fm{display:none}
 </div>
 <div id="main">
 <div id="ws"><div id="fbar"><span id="ref"></span><input id="fb" placeholder="মান বা =সূত্র লিখুন, Enter চাপুন"></div><div id="g"></div></div></div>
-<input type="file" id="fi" accept="image/*" hidden>
+<input type="file" id="fi" accept="image/*" hidden><input type="file" id="bf" accept=".json,.txt,application/json" hidden>
 <div id="md"><div id="bx"></div></div>
 <script>
 const $=s=>document.querySelector(s),K="dbapp1";
@@ -159,8 +159,14 @@ document.onkeydown=e=>{if(e.target.matches("input,textarea")||$("#md").style.dis
 $("#im").onclick=()=>file()&&$("#fi").click();
 $("#fi").onchange=e=>{const fl=e.target.files[0];if(!fl)return;const rd=new FileReader();rd.onload=()=>{const i=new Image();i.onload=()=>{const s=Math.min(1,64/Math.max(i.width,i.height)),c=document.createElement("canvas");c.width=Math.max(1,i.width*s);c.height=Math.max(1,i.height*s);c.getContext("2d").drawImage(i,0,0,c.width,c.height);put("img:"+c.toDataURL("image/jpeg",.4));grid()};i.src=rd.result};rd.readAsDataURL(fl);e.target.value=""};
 /* backup / reset */
-$("#bk").onclick=()=>{md(`<b>ব্যাকআপ ও রিস্টোর</b><p style="color:var(--mu)">নিচের লেখা কপি করে নিরাপদ জায়গায় রাখুন। ফেরাতে আগের ব্যাকআপ এখানে পেস্ট করে "রিস্টোর" চাপুন।</p><textarea id="bt">${esc(JSON.stringify(S))}</textarea><div class="r"><button id="cp">কপি</button><button id="rt">টেক্সট থেকে রিস্টোর</button><button id="ls">এই ব্রাউজারে ব্যাকআপ রাখুন</button><button id="lr">ব্রাউজার ব্যাকআপ থেকে ফেরান</button><button id="no">বন্ধ</button></div><p id="st" style="color:var(--mu)"></p>`);
+$("#bk").onclick=()=>{md(`<b>ব্যাকআপ ও রিস্টোর</b><p style="color:var(--mu)">নিচের লেখা কপি করে নিরাপদ জায়গায় রাখুন। ফেরাতে আগের ব্যাকআপ এখানে পেস্ট করে "রিস্টোর" চাপুন।</p><textarea id="bt">${esc(JSON.stringify(S))}</textarea><div class="r"><button id="dl">⬇ ফাইল ডাউনলোড</button><button id="up">⬆ ফাইল থেকে রিস্টোর</button><button id="cp">কপি</button><button id="rt">টেক্সট থেকে রিস্টোর</button><button id="ls">এই ব্রাউজারে ব্যাকআপ রাখুন</button><button id="lr">ব্রাউজার ব্যাকআপ থেকে ফেরান</button><button id="no">বন্ধ</button></div><p id="st" style="color:var(--mu)"></p>`);
  const st=t=>$("#st").textContent=t;
+ $("#dl").onclick=async()=>{let d=null;try{d=window.claude&&await claude.use("downloads")}catch(e){}
+ if(!d){st("এই ভিউতে ডাউনলোড সম্ভব নয়, লেখা কপি করুন");return}
+ const nm="database-backup-"+new Date().toISOString().slice(0,10)+".json";
+ try{await d.save({filename:nm,data:new Blob([JSON.stringify(S)],{type:"application/json"})});st("ডাউনলোড হয়েছে")}catch(e){if(!e||e.code!=="declined")st("ডাউনলোড হয়নি")}};
+ $("#up").onclick=()=>$("#bf").click();
+ $("#bf").onchange=async e=>{const f=e.target.files[0];e.target.value="";if(!f)return;try{const o=JSON.parse(await f.text());if(!o.tree)throw 0;S=o;S.view="fm";S.cwd=0;P={r:1,c:1};save();grid();$("#bt").value=JSON.stringify(S);st("ফাইল থেকে রিস্টোর হয়েছে")}catch(x){st("ফাইলটি সঠিক ব্যাকআপ নয়")}};
  $("#cp").onclick=()=>{$("#bt").select();try{document.execCommand("copy");st("কপি হয়েছে")}catch(e){st("হাত দিয়ে কপি করুন")}};
  $("#rt").onclick=()=>{try{const o=JSON.parse($("#bt").value);if(!o.tree)throw 0;S=o;P={r:1,c:1};save();grid();st("রিস্টোর হয়েছে")}catch(e){st("টেক্সটটি সঠিক নয়")}};
  $("#ls").onclick=()=>{try{localStorage.setItem(K+"bk",JSON.stringify(S));st("ব্যাকআপ রাখা হয়েছে")}catch(e){st("ব্যর্থ")}};
