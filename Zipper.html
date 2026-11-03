@@ -149,10 +149,11 @@ $("#mk").onclick=async()=>{
   $("#sv").hidden=false}
  catch(e){$("#bar").hidden=true;R.textContent="ব্যর্থ: "+(e&&e.message||e)}
  $("#mk").disabled=false};
+const dlFile=(n,b)=>{const u=URL.createObjectURL(b),a=document.createElement("a");a.href=u;a.download=n;document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),4000)};
 $("#sv").onclick=async()=>{
  if(!zb)return;let d=null;try{d=window.claude&&await claude.use("downloads")}catch(e){}
- if(!d){$("#res").textContent="এই ভিউতে সেভ করা যাচ্ছে না। আর্টিফ্যাক্টটি claude.ai-তে খুলে চেষ্টা করুন।";return}
+ 
  const nm=($("#nm").value.trim()||"archive").replace(/\.zip$/i,"")+".zip";
- try{await d.save({filename:nm,data:zb})}catch(e){if(e&&e.code!=="declined")$("#res").textContent="সেভ হয়নি ("+(e.code||"ত্রুটি")+")"}};
+ try{if(d)await d.save({filename:nm,data:zb});else dlFile(nm,zb)}catch(e){if(e&&e.code!=="declined")$("#res").textContent="সেভ হয়নি ("+(e.code||"ত্রুটি")+")"}};
 render();
 </script></body></html>
