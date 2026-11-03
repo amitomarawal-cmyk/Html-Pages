@@ -84,11 +84,19 @@
                     <i class="fa-solid fa-upload"></i>
                     <input type="file" id="importFileInput" accept=".json" class="hidden" onchange="importData(event)">
                 </label>
-                <button onclick="confirmReset()" title="Reset All" class="w-9 h-9 rounded-xl bg-rose-950/40 hover:bg-rose-900/60 text-rose-400 flex items-center justify-center text-xs border border-rose-800/40 transition-all active:scale-95">
+                <button onclick="confirmReset()" title="Reset this account tab" class="w-9 h-9 rounded-xl bg-rose-950/40 hover:bg-rose-900/60 text-rose-400 flex items-center justify-center text-xs border border-rose-800/40 transition-all active:scale-95">
                     <i class="fa-solid fa-rotate-right"></i>
                 </button>
             </div>
         </header>
+
+        <!-- ACCOUNT TABS (add / rename / delete) -->
+        <nav aria-label="Account tabs" class="glass-card rounded-2xl p-1.5 flex items-center gap-1.5 shadow-lg">
+            <div id="tabList" class="relative flex items-center gap-1.5 overflow-x-auto flex-1 min-w-0 py-0.5"></div>
+            <button type="button" onclick="openAddLedger()" title="New account tab" aria-label="Add new account tab" class="shrink-0 w-9 h-9 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white flex items-center justify-center text-xs border border-indigo-400/40 transition-all active:scale-95">
+                <i class="fa-solid fa-plus" aria-hidden="true"></i>
+            </button>
+        </nav>
 
         <!-- 1. MAIN BALANCE & SUMMARY CARD (Ultra Dense) -->
         <section class="glass-card p-3.5 rounded-2xl relative overflow-hidden shadow-xl border border-slate-800">
@@ -241,6 +249,23 @@
         </div>
     </div>
 
+    <!-- Account Name Modal (add / rename) -->
+    <div id="nameModal" onclick="if(event.target===this)closeNameModal()" class="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/80 backdrop-blur-sm hidden p-4">
+        <form onsubmit="submitNameModal(event)" class="glass-card p-4 rounded-2xl max-w-xs w-full border border-slate-800 shadow-2xl space-y-3">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-full flex items-center justify-center bg-indigo-500/20 text-indigo-400 text-sm">
+                    <i class="fa-solid fa-folder-plus"></i>
+                </div>
+                <h4 id="nameModalTitle" class="font-bold text-white text-xs">New Account Tab</h4>
+            </div>
+            <input type="text" id="nameModalInput" maxlength="24" autocomplete="off" aria-label="Account tab name" placeholder="e.g., Shop, Family, Savings" class="w-full bg-slate-900/90 border border-slate-800 rounded-xl px-2.5 py-2.5 text-base text-white focus:ring-1 focus:ring-indigo-500 focus:outline-none placeholder:text-slate-500">
+            <div class="flex items-center justify-end gap-2 pt-1">
+                <button type="button" onclick="closeNameModal()" class="px-4 py-2.5 text-sm font-bold rounded-xl bg-slate-800 text-slate-300">Cancel</button>
+                <button type="submit" class="px-4 py-2.5 text-sm font-bold rounded-xl bg-indigo-600 text-white">Save</button>
+            </div>
+        </form>
+    </div>
+
     <!-- Application Script -->
     <script>
         const CATEGORIES = {
@@ -248,7 +273,13 @@
             expense: ['Food/Grocery 🍕', 'Rent/Home 🏠', 'Bills/Utility ⚡', 'Shopping 🛒', 'Transit/Fuel 🚗', 'Entertainment 🎬', 'Other Cost 💸']
         };
 
-        let transactions = [];
+        let transactions = [];      // always points at the active account tab's transactions
+        let ledgers = [];           // all account tabs: { id, name, transactions, carry }
+        let activeLedgerId = null;
+        let nameModalMode = 'add';
+        const STORE_KEY = 'finflow_ledgers_v2';
+        const MAX_LEDGERS = 30;
+        const MAX_NAME_LEN = 24;
         let chartMode = 'comparison'; // 'expenses' or 'comparison'
         let chartInstance = null;
 
@@ -260,47 +291,222 @@
             renderApp();
         };
 
+        function makeId(prefix) {
+            return prefix + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+        }
+
+        function cleanName(n) {
+            return String(n === undefined || n === null ? '' : n).replace(/\s+/g, ' ').trim().slice(0, MAX_NAME_LEN);
+        }
+
+        function createLedger(name, txs, carry) {
+            return { id: makeId('acc'), name: name, transactions: txs || [], carry: Number.isFinite(carry) ? carry : 0 };
+        }
+
+        function getActiveLedger() {
+            return ledgers.find(l => l.id === activeLedgerId) || ledgers[0];
+        }
+
+        // Transactions older than 5 years are folded into the tab's carry-forward balance
+        function rollOverOld(ledger) {
+            const cutoffYear = new Date().getFullYear() - 5;
+            const valid = (Array.isArray(ledger.transactions) ? ledger.transactions : []).filter(isValidTransaction);
+            const isOld = t => parseInt(t.date.split('-')[0]) <= cutoffYear;
+            const oldNet = valid.filter(isOld).reduce((sum, t) => t.type === 'income' ? sum + Number(t.amount) : sum - Number(t.amount), 0);
+            ledger.carry = (Number.isFinite(Number(ledger.carry)) ? Number(ledger.carry) : 0) + oldNet;
+            ledger.transactions = valid.filter(t => !isOld(t));
+            return ledger;
+        }
+
+        function sanitizeLedger(l) {
+            if (!l || typeof l !== 'object' || typeof l.id !== 'string' || !l.id) return null;
+            return rollOverOld({ id: l.id, name: cleanName(l.name) || 'Account', transactions: l.transactions, carry: l.carry });
+        }
+
+        function loadDemoLedgers() {
+            ledgers = [createLedger('Main', getDemoData(), 0)];
+            activeLedgerId = ledgers[0].id;
+            transactions = ledgers[0].transactions;
+        }
+
         function loadData() {
             try {
-                const stored = localStorage.getItem('finflow_mini_data');
-                const cutoffYear = new Date().getFullYear() - 5;
+                const stored = localStorage.getItem(STORE_KEY);
                 if (stored !== null) {
                     const parsed = JSON.parse(stored);
-                    if (Array.isArray(parsed)) {
-                        const valid = parsed.filter(isValidTransaction);
-                        const old = valid.filter(t => parseInt(t.date.split('-')[0]) <= cutoffYear);
-                        const recent = valid.filter(t => parseInt(t.date.split('-')[0]) > cutoffYear);
-
-                        // Calculate carry forward from old transactions
-                        let existingCarry = parseFloat(localStorage.getItem('finflow_carry_forward') || '0');
-                        let oldNet = old.reduce((sum, t) => t.type === 'income' ? sum + t.amount : sum - t.amount, 0);
-                        if (old.length > 0) {
-                            localStorage.setItem('finflow_carry_forward', existingCarry + oldNet);
-                        }
-
-                        transactions = recent;
-                        saveData();
-                    } else {
-                        transactions = getDemoData();
-                    }
+                    const list = parsed && Array.isArray(parsed.ledgers)
+                        ? parsed.ledgers.slice(0, MAX_LEDGERS).map(sanitizeLedger).filter(Boolean)
+                        : [];
+                    if (list.length === 0) throw new Error('No account tabs found');
+                    ledgers = list;
+                    activeLedgerId = list.some(l => l.id === parsed.activeId) ? parsed.activeId : list[0].id;
                 } else {
-                    transactions = getDemoData();
-                    saveData();
+                    // First run of the multi-tab version: move the old single-account data into the first tab
+                    const legacy = localStorage.getItem('finflow_mini_data');
+                    let legacyList = null;
+                    if (legacy !== null) {
+                        const arr = JSON.parse(legacy);
+                        if (Array.isArray(arr)) legacyList = arr;
+                    }
+                    if (legacyList) {
+                        const carry = parseFloat(localStorage.getItem('finflow_carry_forward') || '0');
+                        const main = rollOverOld(createLedger('Main', legacyList, carry));
+                        ledgers = [main];
+                        activeLedgerId = main.id;
+                    } else {
+                        loadDemoLedgers();
+                    }
                 }
+                transactions = getActiveLedger().transactions;
+                saveData();
             } catch (e) {
-                transactions = getDemoData();
+                loadDemoLedgers();
                 showToast('Saved data could not be read. Demo data loaded instead.', 'warning');
             }
         }
 
         function saveData() {
             try {
-                localStorage.setItem('finflow_mini_data', JSON.stringify(transactions));
+                const active = getActiveLedger();
+                if (active) active.transactions = transactions;
+                localStorage.setItem(STORE_KEY, JSON.stringify({ version: 2, activeId: activeLedgerId, ledgers: ledgers }));
                 return true;
             } catch (e) {
                 showToast('Could not save data in this browser. Export a backup and check storage settings.', 'warning');
                 return false;
             }
+        }
+
+        // --- ACCOUNT TABS ---
+
+        function renderTabs() {
+            const list = document.getElementById('tabList');
+            list.innerHTML = '';
+            let activeEl = null;
+
+            ledgers.forEach(l => {
+                const isActive = l.id === activeLedgerId;
+                const wrap = document.createElement('div');
+                wrap.className = 'shrink-0 flex items-center rounded-xl border transition-all ' +
+                    (isActive ? 'bg-indigo-600/20 border-indigo-500/50' : 'bg-slate-900/80 border-slate-800');
+
+                const tab = document.createElement('button');
+                tab.type = 'button';
+                if (isActive) tab.setAttribute('aria-current', 'true');
+                tab.className = 'px-3 h-9 text-xs font-bold max-w-[9rem] truncate ' +
+                    (isActive ? 'text-white' : 'text-slate-400 hover:text-slate-200');
+                tab.textContent = l.name;
+                tab.addEventListener('click', () => switchLedger(l.id));
+                wrap.appendChild(tab);
+
+                if (isActive) {
+                    activeEl = wrap;
+                    wrap.appendChild(makeTabAction('fa-pen', 'Rename this account tab', 'text-slate-400 hover:text-indigo-300', openRenameLedger));
+                    if (ledgers.length > 1) {
+                        wrap.appendChild(makeTabAction('fa-trash-can', 'Delete this account tab', 'text-slate-400 hover:text-rose-400', confirmDeleteLedger));
+                    }
+                }
+                list.appendChild(wrap);
+            });
+
+            if (activeEl) list.scrollLeft = activeEl.offsetLeft - (list.clientWidth - activeEl.offsetWidth) / 2;
+        }
+
+        function makeTabAction(icon, label, colorClass, handler) {
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.title = label;
+            btn.setAttribute('aria-label', label);
+            btn.className = 'w-8 h-9 flex items-center justify-center text-[11px] transition-colors ' + colorClass;
+            btn.innerHTML = '<i class="fa-solid ' + icon + '" aria-hidden="true"></i>';
+            btn.addEventListener('click', handler);
+            return btn;
+        }
+
+        function switchLedger(id) {
+            if (id === activeLedgerId) return;
+            const target = ledgers.find(l => l.id === id);
+            if (!target) return;
+            getActiveLedger().transactions = transactions;
+            activeLedgerId = id;
+            transactions = target.transactions;
+            saveData();
+            renderApp();
+        }
+
+        function openAddLedger() {
+            if (ledgers.length >= MAX_LEDGERS) {
+                showToast('You can have up to ' + MAX_LEDGERS + ' account tabs.', 'warning');
+                return;
+            }
+            openNameModal('add');
+        }
+
+        function openRenameLedger() {
+            openNameModal('rename');
+        }
+
+        function openNameModal(mode) {
+            nameModalMode = mode;
+            document.getElementById('nameModalTitle').textContent = mode === 'add' ? 'New Account Tab' : 'Rename Account Tab';
+            const input = document.getElementById('nameModalInput');
+            input.value = mode === 'rename' ? getActiveLedger().name : '';
+            document.getElementById('nameModal').classList.remove('hidden');
+            setTimeout(() => { input.focus(); input.select(); }, 50);
+        }
+
+        function closeNameModal() {
+            document.getElementById('nameModal').classList.add('hidden');
+        }
+
+        function submitNameModal(e) {
+            e.preventDefault();
+            const name = cleanName(document.getElementById('nameModalInput').value);
+            if (!name) {
+                showToast('Please enter a name for the tab.', 'warning');
+                return;
+            }
+            if (nameModalMode === 'add') {
+                if (ledgers.length >= MAX_LEDGERS) {
+                    showToast('You can have up to ' + MAX_LEDGERS + ' account tabs.', 'warning');
+                    return;
+                }
+                getActiveLedger().transactions = transactions;
+                const fresh = createLedger(name, [], 0);
+                ledgers.push(fresh);
+                activeLedgerId = fresh.id;
+                transactions = fresh.transactions;
+            } else {
+                getActiveLedger().name = name;
+            }
+            saveData();
+            closeNameModal();
+            renderApp();
+        }
+
+        function confirmDeleteLedger() {
+            if (ledgers.length <= 1) {
+                showToast('At least one account tab is required.', 'warning');
+                return;
+            }
+            const target = getActiveLedger();
+            showModal(
+                'Delete "' + target.name + '"?',
+                'This will permanently delete this account tab and every record in it. Your other tabs are not affected. Export a backup first if you need it later.',
+                function() { deleteLedger(target.id); },
+                'Delete Tab'
+            );
+        }
+
+        function deleteLedger(id) {
+            const idx = ledgers.findIndex(l => l.id === id);
+            if (idx === -1 || ledgers.length <= 1) return;
+            ledgers.splice(idx, 1);
+            const next = ledgers[Math.min(idx, ledgers.length - 1)];
+            activeLedgerId = next.id;
+            transactions = next.transactions;
+            saveData();
+            renderApp();
         }
 
         function isValidTransaction(t) {
@@ -392,6 +598,7 @@
         }
 
         function renderApp() {
+            renderTabs();
             renderSummary();
             renderTransactionHistory();
             renderCharts();
@@ -407,7 +614,7 @@
                 if (t.type === 'expense') totalExpense += amt;
             });
 
-            const carryForward = parseFloat(localStorage.getItem('finflow_carry_forward') || '0');
+            const carryForward = Number((getActiveLedger() || {}).carry) || 0;
             const netBalance = totalIncome - totalExpense + carryForward;
 
             document.getElementById('totalBalance').textContent = formatCurrency(netBalance);
@@ -561,7 +768,9 @@
         // --- BACKUP, IMPORT & RESET ---
 
         function exportData() {
-            const blob = new Blob([JSON.stringify(transactions, null, 2)], { type: 'application/json' });
+            getActiveLedger().transactions = transactions;
+            const payload = { app: 'finflow_mini', version: 2, activeId: activeLedgerId, ledgers: ledgers };
+            const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' });
             const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
             a.href = url;
@@ -570,7 +779,7 @@
             a.click();
             a.remove();
             URL.revokeObjectURL(url);
-            showToast('Backup export started.');
+            showToast('Backup of all account tabs started.');
         }
 
         function getLocalDateString(date) {
@@ -578,6 +787,30 @@
             const m = String(date.getMonth() + 1).padStart(2, '0');
             const d = String(date.getDate()).padStart(2, '0');
             return `${y}-${m}-${d}`;
+        }
+
+        function normalizeTransactions(arr) {
+            return arr.map((t, index) => ({
+                id: typeof t.id === 'string' && t.id ? t.id : `tx_import_${Date.now()}_${index}`,
+                type: t.type,
+                amount: Number(t.amount),
+                category: t.category,
+                date: t.date,
+                description: typeof t.description === 'string' && t.description.trim() ? t.description.trim() : t.category
+            }));
+        }
+
+        function parseImportedLedger(l, usedIds) {
+            if (!l || typeof l !== 'object' || !Array.isArray(l.transactions) || !l.transactions.every(isValidTransaction)) return null;
+            if (l.carry !== undefined && !Number.isFinite(Number(l.carry))) return null;
+            const id = (typeof l.id === 'string' && l.id && !usedIds.has(l.id)) ? l.id : makeId('acc');
+            usedIds.add(id);
+            return {
+                id: id,
+                name: cleanName(l.name) || 'Account',
+                transactions: normalizeTransactions(l.transactions),
+                carry: Number(l.carry) || 0
+            };
         }
 
         function importData(event) {
@@ -588,20 +821,34 @@
             reader.onload = function(e) {
                 try {
                     const imported = JSON.parse(e.target.result);
-                    if (Array.isArray(imported) && imported.every(isValidTransaction)) {
-                        transactions = imported.map((t, index) => ({
-                            id: typeof t.id === 'string' && t.id ? t.id : `tx_import_${Date.now()}_${index}`,
-                            type: t.type,
-                            amount: Number(t.amount),
-                            category: t.category,
-                            date: t.date,
-                            description: typeof t.description === 'string' && t.description.trim() ? t.description.trim() : t.category
-                        }));
+
+                    if (Array.isArray(imported)) {
+                        // Old single-account backup: keep everything and add it as a new tab
+                        if (!imported.every(isValidTransaction)) throw new Error('Invalid transaction data');
+                        if (ledgers.length >= MAX_LEDGERS) {
+                            showToast('You can have up to ' + MAX_LEDGERS + ' account tabs.', 'warning');
+                            return;
+                        }
+                        getActiveLedger().transactions = transactions;
+                        const fresh = createLedger('Imported', normalizeTransactions(imported), 0);
+                        ledgers.push(fresh);
+                        activeLedgerId = fresh.id;
+                        transactions = fresh.transactions;
+                        saveData();
+                        renderApp();
+                        showToast('Old backup added as a new account tab.');
+                    } else if (imported && Array.isArray(imported.ledgers) && imported.ledgers.length > 0 && imported.ledgers.length <= MAX_LEDGERS) {
+                        const usedIds = new Set();
+                        const restored = imported.ledgers.map(l => parseImportedLedger(l, usedIds));
+                        if (restored.some(l => l === null)) throw new Error('Invalid account data');
+                        ledgers = restored;
+                        activeLedgerId = restored.some(l => l.id === imported.activeId) ? imported.activeId : restored[0].id;
+                        transactions = getActiveLedger().transactions;
                         saveData();
                         renderApp();
                         showToast('Backup restored successfully.');
                     } else {
-                        throw new Error('Invalid transaction data');
+                        throw new Error('Invalid backup');
                     }
                 } catch (err) {
                     showToast('Invalid backup file. Your existing data was not changed.', 'warning');
@@ -612,11 +859,18 @@
         }
 
         function confirmReset() {
-            showModal("Wipe All Local Data?", "Are you sure? This will permanently delete all transaction records stored in this browser.", function() {
-                transactions = [];
-                saveData();
-                renderApp();
-            });
+            const target = getActiveLedger();
+            showModal(
+                'Wipe "' + target.name + '"?',
+                'This will permanently delete all records in this account tab. Your other tabs are not affected.',
+                function() {
+                    transactions = [];
+                    target.carry = 0;
+                    saveData();
+                    renderApp();
+                },
+                'Wipe All'
+            );
         }
 
         // --- UTILS ---
@@ -635,10 +889,11 @@
             return str ? str.replace(/[&<>'"]/g, tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)) : '';
         }
 
-        function showModal(title, msg, onConfirm) {
+        function showModal(title, msg, onConfirm, confirmLabel) {
             document.getElementById('modalTitle').textContent = title;
             document.getElementById('modalMessage').textContent = msg;
             const confirmBtn = document.getElementById('modalConfirmBtn');
+            confirmBtn.textContent = confirmLabel || 'Confirm';
             confirmBtn.onclick = function() {
                 if (onConfirm) onConfirm();
                 closeModal();
@@ -649,6 +904,10 @@
         function closeModal() {
             document.getElementById('customModal').classList.add('hidden');
         }
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') { closeModal(); closeNameModal(); }
+        });
 
         function getDemoData() {
             const year = new Date().getFullYear();
