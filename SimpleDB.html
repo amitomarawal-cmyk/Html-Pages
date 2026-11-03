@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="bn"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>আমার ডেটাবেস</title>
+<style>
+:root{--bg:#fff;--fg:#1d2129;--mu:#6b7280;--bd:#d6d9de;--hd:#f1f3f5;--ac:#1a73e8;--sl:#e8f0fe;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#16181d;--fg:#e6e8eb;--mu:#9aa0a8;--bd:#363a42;--hd:#22252b;--ac:#6ea8fe;--sl:#243247}}
+html,body{height:100%;margin:0}
+body{background:var(--bg);color:var(--fg);font:14px/1.4 "Noto Sans Bengali","Kalpurush",system-ui,sans-serif;display:flex;flex-direction:column}
+button{font:inherit;color:inherit;background:var(--hd);border:1px solid var(--bd);border-radius:6px;padding:5px 9px;cursor:pointer;white-space:nowrap}
+button:hover{border-color:var(--ac)}
+#tb{display:flex;gap:6px;padding:8px;overflow-x:auto;border-bottom:1px solid var(--bd);flex:none}
+#main{flex:1;display:flex;min-height:0}
+#sb{width:210px;flex:none;border-right:1px solid var(--bd);overflow:auto;padding:6px}
+#sb ul{list-style:none;margin:0;padding-left:14px}#sb>ul{padding-left:0}
+.ni{padding:4px 6px;border-radius:5px;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ni.on{background:var(--sl);color:var(--ac)}
+#ws{flex:1;min-width:0;display:flex;flex-direction:column}
+#fbar{display:flex;gap:6px;padding:6px;align-items:center;flex:none}
+#ref{min-width:44px;text-align:center;color:var(--mu)}
+#fb{flex:1;min-width:0;font:inherit;padding:5px 8px;background:var(--bg);color:var(--fg);border:1px solid var(--bd);border-radius:6px}
+#g{flex:1;overflow:auto;-webkit-overflow-scrolling:touch}
+table{border-collapse:separate;border-spacing:0}
+th,td{border-right:1px solid var(--bd);border-bottom:1px solid var(--bd);height:28px;padding:0 6px;white-space:nowrap}
+td{min-width:96px;max-width:96px;overflow:hidden;text-overflow:ellipsis;cursor:cell}
+td.n{text-align:right}td img{height:24px;vertical-align:middle;image-rendering:auto}
+th{background:var(--hd);color:var(--mu);font-weight:500;position:sticky;top:0;z-index:2}
+th.rh{left:0;top:auto;z-index:1;min-width:34px;text-align:center}th.cr{left:0;z-index:3}
+td.sel{outline:2px solid var(--ac);outline-offset:-2px;background:var(--sl)}
+.em{padding:20px;color:var(--mu)}
+.ci{width:100%;box-sizing:border-box;border:0;outline:0;background:transparent;font:inherit;color:inherit;padding:0;height:26px;display:block}
+body[data-m=fm] .sh,body[data-m=sh] .fm{display:none}
+.bc{padding:10px 12px;color:var(--mu)}.bc a{cursor:pointer;color:var(--ac)}
+.its{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;padding:10px}
+.it{position:relative;border:1px solid var(--bd);border-radius:10px;padding:14px 6px 8px;text-align:center;cursor:pointer;background:var(--hd)}
+.it:hover{border-color:var(--ac)}.ic{font-size:36px}.nm{word-break:break-word}
+.ac2{position:absolute;top:2px;right:4px;display:flex;gap:4px}.ac2 span{padding:3px}
+#md{position:fixed;inset:0;background:#0008;display:none;align-items:center;justify-content:center;z-index:9;padding:12px}
+#bx{background:var(--bg);border:1px solid var(--bd);border-radius:10px;padding:14px;max-width:560px;width:100%;max-height:85%;overflow:auto}
+#bx textarea,#bx input{width:100%;box-sizing:border-box;font:inherit;background:var(--bg);color:var(--fg);border:1px solid var(--bd);border-radius:6px;padding:6px}
+#bx textarea{height:150px}#bx code{background:var(--hd);padding:0 4px;border-radius:4px}
+#bx .r{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+@media(max-width:640px){#sb{position:absolute;z-index:5;background:var(--bg);height:calc(100% - 50px);top:50px;display:none}#sb.o{display:block}}
+</style></head><body>
+<div id="tb">
+<button id="bm" class="sh">← ফাইল ম্যানেজার</button><button id="nf" class="fm">＋ফোল্ডার</button><button id="nF" class="fm">＋ডেটাবেস ফাইল</button>
+<button id="ar" class="sh">＋সারি</button><button id="ac" class="sh">＋কলাম</button><button id="dr" class="sh">সারি মোছা</button><button id="dc" class="sh">কলাম মোছা</button>
+<button id="im" class="sh">🖼 ছবি</button><button id="bk">ব্যাকআপ</button><button id="rs">রিসেট</button><button id="hp">সাহায্য</button>
+</div>
+<div id="main">
+<div id="ws"><div id="fbar"><span id="ref"></span><input id="fb" placeholder="মান বা =সূত্র লিখুন, Enter চাপুন"></div><div id="g"></div></div></div>
+<input type="file" id="fi" accept="image/*" hidden>
+<div id="md"><div id="bx"></div></div>
+<script>
+const $=s=>document.querySelector(s),K="dbapp1";
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const fresh=()=>({n:3,sel:3,tree:[{id:2,name:"আমার ফোল্ডার",type:"folder",open:true,ch:[{id:3,name:"ডেটা১",type:"file",rows:30,cols:8,cells:{}}]}]});
+let S;try{S=JSON.parse(localStorage.getItem(K))}catch(e){}
+if(!S||!S.tree)S=fresh();
+S.view="fm";S.cwd=0;
+let P={r:1,c:1},E=null;
+const save=()=>{try{localStorage.setItem(K,JSON.stringify(S))}catch(e){}};
+function find(id,L=S.tree,p=null){for(const n of L){if(n.id===id)return{n,L,p};if(n.ch){const x=find(id,n.ch,n);if(x)return x}}return null}
+const file=()=>{const x=find(S.sel);return x&&x.n.type==="file"?x.n:null};
+const colL=n=>{let s="";while(n>0){s=String.fromCharCode(65+(n-1)%26)+s;n=Math.floor((n-1)/26)}return s};
+const colN=s=>[...s].reduce((a,c)=>a*26+c.charCodeAt(0)-64,0);
+const parse=r=>{const m=/^([A-Z]+)(\d+)$/.exec(r);return[+m[2],colN(m[1])]};
+/* formulas */
+const fl=a=>a.flat(Infinity).filter(x=>typeof x==="number");
+const F={SUM:(...a)=>fl(a).reduce((x,y)=>x+y,0),AVG:(...a)=>{a=fl(a);return a.reduce((x,y)=>x+y,0)/a.length},MIN:(...a)=>Math.min(...fl(a)),MAX:(...a)=>Math.max(...fl(a)),COUNT:(...a)=>fl(a).length,PRODUCT:(...a)=>fl(a).reduce((x,y)=>x*y,1),ABS:Math.abs,SQRT:Math.sqrt,INT:Math.floor,POWER:Math.pow,MOD:(a,b)=>a%b,PI:()=>Math.PI,ROUND:(a,d=0)=>Math.round(a*10**d)/10**d,IF:(c,a,b)=>c?a:b,CONCAT:(...a)=>a.flat(Infinity).join(""),LEN:s=>String(s).length};
+F.AVERAGE=F.AVG;
+function calc(f,ref,m){
+ if(ref in m)return m[ref];
+ m[ref]="#CYC";const raw=f.cells[ref];let o;
+ if(raw==null||raw==="")o="";
+ else if(typeof raw==="string"&&raw[0]==="="){try{o=run(f,raw.slice(1),m);if(typeof o==="number"&&!isFinite(o))o="#ERR"}catch(e){o=typeof e==="string"?e:"#ERR"}}
+ else if(typeof raw==="string"&&raw.trim()!==""&&!isNaN(raw))o=+raw;
+ else o=raw;
+ return m[ref]=o}
+function run(f,e,m){
+ const C=r=>{const v=calc(f,r,m);if(typeof v==="string"&&v[0]==="#")throw v;return v===""?0:v};
+ const R=(a,b)=>{const[r1,c1]=parse(a),[r2,c2]=parse(b),o=[];for(let r=Math.min(r1,r2);r<=Math.max(r1,r2);r++)for(let c=Math.min(c1,c2);c<=Math.max(c1,c2);c++){const v=calc(f,colL(c)+r,m);if(typeof v==="string"&&v[0]==="#")throw v;o.push(v)}return o};
+ e=e.split(/("[^"]*")/).map((p,i)=>i%2?p:p
+  .replace(/([A-Za-z]{1,3})(\d+):([A-Za-z]{1,3})(\d+)|\b([A-Za-z]{1,3})(\d+)\b(?!\()/g,(_,a,b,c,d,x,y)=>x?`C("${x.toUpperCase()}${y}")`:`R("${a.toUpperCase()}${b}","${c.toUpperCase()}${d}")`)
+  .replace(/[A-Za-z]+(?=\()/g,s=>s.toUpperCase())
+  .replace(/\^/g,"**").replace(/<>/g,"!=").replace(/(?<![<>!=])=(?!=)/g,"==")).join("");
+ return new Function("C","R",...Object.keys(F),"return "+e)(C,R,...Object.values(F))}
+const show=v=>typeof v==="number"?String(Number(v.toPrecision(12))):v===""?"":String(v).startsWith("img:")?`<img src="${esc(v.slice(4))}">`:esc(v);
+/* render */
+function tree(L){return"<ul>"+L.map(n=>`<li><div class="ni ${n.id===S.sel?"on":""}" data-id="${n.id}">${n.type==="folder"?(n.open?"📂":"📁"):"📄"} ${esc(n.name)}</div>${n.ch&&n.open?tree(n.ch):""}</li>`).join("")+"</ul>"}
+function grid(){
+ E=null;const f=S.view==="sh"?file():null;
+ document.body.dataset.m=f?"sh":"fm";$("#fbar").style.display=f?"flex":"none";
+ if(!f){S.view="fm";fm();return}
+ const m={};let h='<table><thead><tr><th class="cr"></th>';
+ for(let c=1;c<=f.cols;c++)h+=`<th>${colL(c)}</th>`;
+ h+="</tr></thead><tbody>";
+ for(let r=1;r<=f.rows;r++){h+=`<tr><th class="rh">${r}</th>`;for(let c=1;c<=f.cols;c++){const v=calc(f,colL(c)+r,m);h+=`<td data-r="${r}" data-c="${c}"${typeof v==="number"?' class="n"':""}>${show(v)}</td>`}h+="</tr>"}
+ $("#g").innerHTML=h+"</tbody></table>";pick(P.r,P.c,1)}
+function pick(r,c,keep){
+ const f=file();if(!f)return;P.r=Math.max(1,Math.min(f.rows,r));P.c=Math.max(1,Math.min(f.cols,c));
+ document.querySelectorAll("td.sel").forEach(x=>x.classList.remove("sel"));
+ const td=document.querySelector(`td[data-r="${P.r}"][data-c="${P.c}"]`);if(!td)return;td.classList.add("sel");
+ const ref=colL(P.c)+P.r;$("#ref").textContent=ref;const v=f.cells[ref];$("#fb").value=v==null?"":String(v).startsWith("img:")?"[ছবি]":v;
+ if(!keep)td.scrollIntoView({block:"nearest",inline:"nearest"})}
+function put(v){const f=file();if(!f)return;const k=colL(P.c)+P.r;if(v===""||v==null)delete f.cells[k];else f.cells[k]=v;save()}
+/* modal */
+const md=h=>{$("#bx").innerHTML=h;$("#md").style.display="flex"},close=()=>$("#md").style.display="none";
+$("#md").onclick=e=>{if(e.target.id==="md")close()};
+function ask(t,def,cb){md(`<b>${t}</b><p><input id="ai" value="${esc(def)}"></p><div class="r"><button id="ok">ঠিক আছে</button><button id="no">বাতিল</button></div>`);$("#ai").focus();$("#ok").onclick=()=>{const v=$("#ai").value.trim();close();if(v)cb(v)};$("#no").onclick=close;$("#ai").onkeydown=e=>{if(e.key==="Enter")$("#ok").click()}}
+function yes(t,cb){md(`<b>${t}</b><div class="r"><button id="ok">হ্যাঁ</button><button id="no">না</button></div>`);$("#ok").onclick=()=>{close();cb()};$("#no").onclick=close}
+/* tree actions */
+function cwdList(){if(!S.cwd)return S.tree;const x=find(S.cwd);if(x&&x.n.ch)return x.n.ch;S.cwd=0;return S.tree}
+function fm(){
+ const L=cwdList();const path=[];let id=S.cwd;while(id){const x=find(id);path.unshift(x.n);id=x.p?x.p.id:0}
+ let h='<div class="bc"><a data-go="0">🏠 মূল ডেটাবেস</a>'+path.map(n=>` › <a data-go="${n.id}">${esc(n.name)}</a>`).join("")+'</div><div class="its">';
+ h+=L.map(n=>`<div class="it" data-id="${n.id}"><div class="ic">${n.type==="folder"?"📁":"🗄️"}</div><div class="nm">${esc(n.name)}</div><div class="ac2"><span data-a="rn">✎</span><span data-a="dl">🗑</span></div></div>`).join("")+"</div>";
+ if(!L.length)h+='<p class="em">এখানে কিছু নেই। উপরের বোতাম দিয়ে ফোল্ডার বা ডেটাবেস ফাইল বানান।</p>';
+ $("#g").innerHTML=h}
+$("#bm").onclick=()=>{S.view="fm";grid()};
+function add(type){ask(type==="file"?"নতুন ফাইলের নাম":"নতুন ফোল্ডারের নাম","",nm=>{const L=cwdList();const n={id:++S.n,name:nm,type};if(type==="file")Object.assign(n,{rows:30,cols:8,cells:{}});else n.ch=[];L.push(n);save();grid()})}
+$("#nf").onclick=()=>add("folder");$("#nF").onclick=()=>add("file");
+
+
+/* rows/cols */
+function shift(f,ax,at,d){const o={};for(const k in f.cells){const p=parse(k);let i=p[ax];if(d<0&&i===at)continue;if(d>0&&i>=at||d<0&&i>at)p[ax]=i+d;o[colL(p[1])+p[0]]=f.cells[k]}f.cells=o}
+$("#ar").onclick=()=>{const f=file();if(f&&f.rows<2000){shift(f,0,P.r+1,1);f.rows++;save();grid()}};
+$("#ac").onclick=()=>{const f=file();if(f&&f.cols<200){shift(f,1,P.c+1,1);f.cols++;save();grid()}};
+$("#dr").onclick=()=>{const f=file();if(f&&f.rows>1)yes(`সারি ${P.r} মুছবেন?`,()=>{shift(f,0,P.r,-1);f.rows--;save();grid()})};
+$("#dc").onclick=()=>{const f=file();if(f&&f.cols>1)yes(`কলাম ${colL(P.c)} মুছবেন?`,()=>{shift(f,1,P.c,-1);f.cols--;save();grid()})};
+/* cells */
+$("#g").onclick=e=>{const t=e.target.closest("td");if(t){if(E&&E.td===t)return;pick(+t.dataset.r,+t.dataset.c,1);return startEdit(t)}
+ const g=e.target.closest("[data-go]");if(g){S.cwd=+g.dataset.go;return grid()}
+ const it=e.target.closest(".it");if(!it)return;const x=find(+it.dataset.id),a=e.target.dataset.a;
+ if(a==="rn")return ask("নতুন নাম",x.n.name,v=>{x.n.name=v;save();grid()});
+ if(a==="dl")return yes(`"${esc(x.n.name)}" মুছবেন? ভিতরের সবকিছু চলে যাবে।`,()=>{x.L.splice(x.L.indexOf(x.n),1);save();grid()});
+ if(x.n.type==="folder")S.cwd=x.n.id;else{S.sel=x.n.id;S.view="sh";P={r:1,c:1}}
+ grid()};
+
+const setv=v=>{const f=file();if(!f)return;const k=colL(P.c)+P.r;if(v==="")delete f.cells[k];else f.cells[k]=v};
+function refresh(){const f=file();if(!f)return;const m={};document.querySelectorAll("#g td").forEach(td=>{if(E&&E.td===td)return;const on=+td.dataset.r===P.r&&+td.dataset.c===P.c,v=calc(f,colL(+td.dataset.c)+td.dataset.r,m);td.innerHTML=show(v);td.className=(typeof v==="number"?"n":"")+(on?" sel":"")})}
+function endEdit(){if(!E)return;E=null;save();refresh()}
+function startEdit(td){endEdit();const f=file();if(!f)return;const o=f.cells[colL(P.c)+P.r],raw=o==null?"":String(o),ci=document.createElement("input");ci.className="ci";ci.value=raw.startsWith("img:")?"":raw;td.innerHTML="";td.appendChild(ci);E={td,ci,o};
+ ci.oninput=()=>{setv(ci.value);$("#fb").value=ci.value};
+ ci.onblur=()=>{if(E&&E.ci===ci)endEdit()};
+ ci.onkeydown=ev=>{const k=ev.key;if(k==="Enter"||k==="ArrowDown"){ev.preventDefault();go(P.r+1,P.c)}else if(k==="ArrowUp"){ev.preventDefault();go(P.r-1,P.c)}else if(k==="Tab"){ev.preventDefault();go(P.r,P.c+(ev.shiftKey?-1:1))}else if(k==="Escape"){const old=E.o,kk=colL(P.c)+P.r;if(old==null)delete file().cells[kk];else file().cells[kk]=old;endEdit();pick(P.r,P.c,1)}};
+ ci.focus()}
+function go(r,c){endEdit();pick(r,c);const td=document.querySelector(`td[data-r="${P.r}"][data-c="${P.c}"]`);if(td)startEdit(td)}
+$("#fb").oninput=()=>{if(!file())return;const v=$("#fb").value;setv(v);if(E)E.ci.value=v};
+$("#fb").onblur=()=>{save();refresh()};
+$("#fb").onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();save();refresh();go(P.r+1,P.c)}else if(e.key==="Escape")$("#fb").blur()};
+document.onkeydown=e=>{if(e.target.matches("input,textarea")||$("#md").style.display==="flex"||document.body.dataset.m!=="sh")return;
+ const d={ArrowUp:[-1,0],ArrowDown:[1,0],ArrowLeft:[0,-1],ArrowRight:[0,1]}[e.key];
+ if(d){e.preventDefault();pick(P.r+d[0],P.c+d[1])}
+ else if(e.key==="Delete"||e.key==="Backspace"){put("");grid()}
+ else if(e.key==="Enter"||e.key==="F2")$("#fb").focus();
+ else if(e.key.length===1&&!e.ctrlKey&&!e.metaKey){$("#fb").focus();$("#fb").value=""}};
+/* image */
+$("#im").onclick=()=>file()&&$("#fi").click();
+$("#fi").onchange=e=>{const fl=e.target.files[0];if(!fl)return;const rd=new FileReader();rd.onload=()=>{const i=new Image();i.onload=()=>{const s=Math.min(1,64/Math.max(i.width,i.height)),c=document.createElement("canvas");c.width=Math.max(1,i.width*s);c.height=Math.max(1,i.height*s);c.getContext("2d").drawImage(i,0,0,c.width,c.height);put("img:"+c.toDataURL("image/jpeg",.4));grid()};i.src=rd.result};rd.readAsDataURL(fl);e.target.value=""};
+/* backup / reset */
+$("#bk").onclick=()=>{md(`<b>ব্যাকআপ ও রিস্টোর</b><p style="color:var(--mu)">নিচের লেখা কপি করে নিরাপদ জায়গায় রাখুন। ফেরাতে আগের ব্যাকআপ এখানে পেস্ট করে "রিস্টোর" চাপুন।</p><textarea id="bt">${esc(JSON.stringify(S))}</textarea><div class="r"><button id="cp">কপি</button><button id="rt">টেক্সট থেকে রিস্টোর</button><button id="ls">এই ব্রাউজারে ব্যাকআপ রাখুন</button><button id="lr">ব্রাউজার ব্যাকআপ থেকে ফেরান</button><button id="no">বন্ধ</button></div><p id="st" style="color:var(--mu)"></p>`);
+ const st=t=>$("#st").textContent=t;
+ $("#cp").onclick=()=>{$("#bt").select();try{document.execCommand("copy");st("কপি হয়েছে")}catch(e){st("হাত দিয়ে কপি করুন")}};
+ $("#rt").onclick=()=>{try{const o=JSON.parse($("#bt").value);if(!o.tree)throw 0;S=o;P={r:1,c:1};save();grid();st("রিস্টোর হয়েছে")}catch(e){st("টেক্সটটি সঠিক নয়")}};
+ $("#ls").onclick=()=>{try{localStorage.setItem(K+"bk",JSON.stringify(S));st("ব্যাকআপ রাখা হয়েছে")}catch(e){st("ব্যর্থ")}};
+ $("#lr").onclick=()=>{try{const o=JSON.parse(localStorage.getItem(K+"bk"));if(!o)throw 0;S=o;P={r:1,c:1};save();grid();st("ফেরানো হয়েছে")}catch(e){st("কোনো ব্যাকআপ নেই")}};
+ $("#no").onclick=close};
+$("#rs").onclick=()=>yes("সব ডেটা মুছে প্রথম অবস্থায় ফিরবেন? (আগে ব্যাকআপ নিন)",()=>{S=fresh();P={r:1,c:1};save();grid()});
+/* help */
+$("#hp").onclick=()=>{md(`<b>সাহায্য ও সূত্র</b><p><b>ব্যবহার:</b> ঘর বেছে নিচের বারে লিখুন, Enter চাপুন। ঘর চেনা যায় কলাম+সারি দিয়ে (যেমন <code>B3</code>)। সূত্র শুরু হয় <code>=</code> দিয়ে। তীর-কী দিয়ে সরুন, Delete দিয়ে ঘর খালি করুন।</p>
+<p><b>হিসাব:</b> <code>=A1+B1</code> যোগ, <code>=A1-B1</code> বিয়োগ, <code>=A1*B1</code> গুণ, <code>=A1/B1</code> ভাগ, <code>=A1^2</code> ঘাত, <code>=(A1+B1)*C1-D1/2</code> জটিল হিসাব।</p>
+<p><b>ফাংশন:</b></p><ul>
+<li><code>=SUM(A1:A10)</code> — যোগফল</li><li><code>=AVG(A1:A10)</code> বা AVERAGE — গড়</li><li><code>=MIN(..)</code>, <code>=MAX(..)</code> — ছোট/বড় মান</li><li><code>=COUNT(A1:A10)</code> — সংখ্যার ঘর গোনা</li><li><code>=PRODUCT(A1:A5)</code> — গুণফল</li><li><code>=ROUND(A1,2)</code> — দশমিক ২ ঘর</li><li><code>=ABS(A1)</code> — ধনাত্মক মান</li><li><code>=SQRT(A1)</code> — বর্গমূল</li><li><code>=POWER(A1,3)</code> — ঘাত</li><li><code>=MOD(A1,3)</code> — ভাগশেষ</li><li><code>=INT(A1)</code> — পূর্ণসংখ্যা অংশ</li><li><code>=PI()</code> — পাই</li><li><code>=IF(A1>=33,"পাস","ফেল")</code> — শর্ত</li><li><code>=CONCAT(A1," ",B1)</code> — লেখা জোড়া</li><li><code>=LEN(A1)</code> — অক্ষর সংখ্যা</li></ul>
+<p><b>তুলনা:</b> <code>></code> <code><</code> <code>>=</code> <code><=</code> <code>=</code> <code><></code></p>
+<p><b>মনে রাখুন:</b> সারি/কলাম মুছলে বা বসালে সূত্রের ঘর-নাম নিজে বদলায় না, দেখে নিন। ছবি ছোট ও ঝাপসা করে রাখা হয়। ডেটা এই ব্রাউজারেই জমা থাকে, তাই নিয়মিত ব্যাকআপ নিন।</p><div class="r"><button id="no">বন্ধ</button></div>`);$("#no").onclick=close};
+grid();
+</script></body></html>

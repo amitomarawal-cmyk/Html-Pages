@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="bn"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>জিপ বানানোর টুল</title>
+<script src="https://cdn.jsdelivr.net/npm/@zip.js/zip.js@2.7.52/dist/zip.min.js"></script>
+<style>
+:root{--bg:#fff;--fg:#1d2129;--mu:#6b7280;--bd:#d6d9de;--hd:#f1f3f5;--ac:#1a73e8;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#16181d;--fg:#e6e8eb;--mu:#9aa0a8;--bd:#363a42;--hd:#22252b;--ac:#6ea8fe}}
+body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 "Noto Sans Bengali","Kalpurush",system-ui,sans-serif}
+main{max-width:760px;margin:0 auto;padding:12px}
+h1{font-size:18px;margin:4px 0 10px}
+button,input{font:inherit;color:inherit}
+button{background:var(--hd);border:1px solid var(--bd);border-radius:6px;padding:6px 11px;cursor:pointer}
+button:hover{border-color:var(--ac)}button.p{background:var(--ac);color:#fff;border-color:var(--ac)}
+input[type=text],input[type=password]{background:var(--bg);border:1px solid var(--bd);border-radius:6px;padding:6px 8px;width:100%;box-sizing:border-box}
+#dz{border:2px dashed var(--bd);border-radius:10px;padding:16px;text-align:center}
+#dz.on{border-color:var(--ac)}
+.r{display:flex;gap:8px;flex-wrap:wrap;justify-content:center;margin-top:8px}
+.mu{color:var(--mu)}
+#ls{margin-top:12px;border:1px solid var(--bd);border-radius:10px;max-height:46vh;overflow:auto}
+.fh,.fr{display:flex;align-items:center;gap:8px;padding:5px 10px;border-bottom:1px solid var(--bd)}
+.fh{background:var(--hd);font-weight:500;justify-content:space-between;position:sticky;top:0}
+.fr .nm{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fr button{padding:2px 8px}
+.pan{margin-top:12px;border:1px solid var(--bd);border-radius:10px;padding:12px}
+.pan label{display:block;margin:8px 0 3px}
+#md{position:fixed;inset:0;background:#000a;display:none;align-items:center;justify-content:center;z-index:9;padding:12px}
+#bx{background:var(--bg);border-radius:10px;padding:12px;max-width:94vw;max-height:88vh;overflow:auto;min-width:240px}
+#bx img,#bx video{max-width:100%;max-height:70vh;display:block}
+#bx pre{margin:0;white-space:pre-wrap;word-break:break-word;max-width:80ch}
+#bx iframe{width:80vw;height:70vh;border:0}
+</style></head><body><main>
+<h1>🗜️ ফাইল ইম্পোর্ট ও জিপ বানানোর টুল</h1>
+<div id="dz">ফাইল বা ফোল্ডার এখানে টেনে এনে ছাড়ুন, অথবা বোতাম চাপুন
+<div class="r"><button id="bf" class="p">＋ ফাইল যোগ</button><button id="bd">＋ ফোল্ডার যোগ</button><button id="ba">সব মুছুন</button></div></div>
+<p class="mu" id="sum"></p>
+<div id="ls"></div>
+<div class="pan"><b>জিপ তৈরি</b>
+<label>জিপের নাম</label><input type="text" id="nm" value="archive">
+<label>পাসওয়ার্ড (ফাঁকা রাখলে এনক্রিপশন হবে না)</label><input type="password" id="pw" autocomplete="new-password">
+<p class="mu" style="margin:6px 0">সর্বোচ্চ কম্প্রেশন (লেভেল ৯) চলবে। পাসওয়ার্ড দিলে AES-256 এনক্রিপশন হবে, যা 7-Zip, WinRAR, Keka-তে খোলে।</p>
+<div class="r" style="justify-content:flex-start"><button id="mk" class="p">জিপ বানান</button><button id="sv" hidden>💾 সেভ করুন</button></div>
+<div id="bar" hidden style="height:12px;background:var(--hd);border:1px solid var(--bd);border-radius:7px;overflow:hidden;margin-top:10px"><div id="fl" style="height:100%;width:0;background:var(--ac);transition:width .15s"></div></div>
+<p id="res"></p></div>
+<input type="file" id="pf" multiple hidden><input type="file" id="pd" webkitdirectory multiple hidden>
+<div id="md"><div id="bx"></div></div>
+</main>
+<script>
+const $=s=>document.querySelector(s);
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const sz=n=>n<1024?n+" B":n<1048576?(n/1024).toFixed(1)+" KB":(n/1048576).toFixed(2)+" MB";
+let items=[],uid=0,zb=null,pu=null;
+function addFile(f,p){p=p.replace(/^\/+/,"");const it={id:++uid,path:p,file:f},i=items.findIndex(x=>x.path===p);if(i>=0)items[i]=it;else items.push(it)}
+function render(){
+ zb=null;$("#sv").hidden=true;$("#bar").hidden=true;$("#res").textContent="";
+ const g={};items.forEach(x=>{const d=x.path.includes("/")?x.path.slice(0,x.path.lastIndexOf("/")):"";(g[d]=g[d]||[]).push(x)});
+ let h="";
+ Object.keys(g).sort().forEach(d=>{
+  h+=`<div class="fh"><span>${d?"📁 "+esc(d):"📄 (মূল)"}</span>${d?`<button data-fd="${esc(d)}">ফোল্ডার মুছুন</button>`:""}</div>`;
+  g[d].sort((a,b)=>a.path<b.path?-1:1).forEach(x=>h+=`<div class="fr"><span class="nm">${esc(x.path.split("/").pop())}</span><span class="mu">${sz(x.file.size)}</span><button data-pv="${x.id}">👁</button><button data-dl="${x.id}">✕</button></div>`)});
+ $("#ls").innerHTML=h||'<p class="mu" style="padding:10px;margin:0">এখনো কিছু যোগ করা হয়নি।</p>';
+ $("#sum").textContent=items.length+" টি ফাইল · "+sz(items.reduce((a,x)=>a+x.file.size,0))}
+const pick=e=>{[...e.target.files].forEach(f=>addFile(f,f.webkitRelativePath||f.name));e.target.value="";render()};
+$("#pf").onchange=pick;$("#pd").onchange=pick;
+$("#bf").onclick=()=>$("#pf").click();$("#bd").onclick=()=>$("#pd").click();
+$("#ba").onclick=()=>{items=[];render()};
+async function walk(en,pre){
+ if(en.isFile){const f=await new Promise((r,j)=>en.file(r,j));addFile(f,pre+en.name)}
+ else{const rd=en.createReader(),all=[];let b;do{b=await new Promise((r,j)=>rd.readEntries(r,j));all.push(...b)}while(b.length);for(const c of all)await walk(c,pre+en.name+"/")}}
+const dz=$("#dz");
+dz.ondragover=e=>{e.preventDefault();dz.classList.add("on")};dz.ondragleave=()=>dz.classList.remove("on");
+dz.ondrop=async e=>{e.preventDefault();dz.classList.remove("on");
+ const es=[...e.dataTransfer.items].map(i=>i.webkitGetAsEntry&&i.webkitGetAsEntry()).filter(Boolean);
+ for(const en of es){try{await walk(en,"")}catch(x){}}render()};
+$("#ls").onclick=e=>{
+ const b=e.target.closest("button");if(!b)return;
+ if(b.dataset.fd){const d=b.dataset.fd;items=items.filter(x=>!x.path.startsWith(d+"/"));render()}
+ else if(b.dataset.dl){items=items.filter(x=>x.id!=+b.dataset.dl);render()}
+ else if(b.dataset.pv)preview(items.find(x=>x.id==+b.dataset.pv))};
+async function preview(x){
+ const f=x.file,t=f.type||"",n=x.path.toLowerCase();
+ if(pu)URL.revokeObjectURL(pu);pu=URL.createObjectURL(f);let h;
+ if(t.startsWith("image/"))h=`<img src="${pu}">`;
+ else if(t.startsWith("video/"))h=`<video src="${pu}" controls></video>`;
+ else if(t.startsWith("audio/"))h=`<audio src="${pu}" controls></audio>`;
+ else if(t==="application/pdf"||n.endsWith(".pdf"))h='<div id="pv">লোড হচ্ছে…</div>';
+ else if(t.startsWith("text/")||/\.(txt|md|json|csv|js|css|html|xml|py|log|ini|yml|yaml|java|c|cpp|sql)$/.test(n))h=`<pre>${esc(await f.slice(0,200000).text())}</pre>`;
+ else h=`<p>এই ধরনের ফাইলের প্রিভিউ নেই।</p>`;
+ $("#bx").innerHTML=`<p style="margin:0 0 8px"><b>${esc(x.path)}</b> <span class="mu">${sz(f.size)}</span> <button id="cl">বন্ধ</button></p>`+h;
+ $("#md").style.display="flex";$("#cl").onclick=cl;if($("#pv"))pdfView(f)}
+const PJ="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/";
+const ld=s=>new Promise((r,j)=>{const e=document.createElement("script");e.src=s;e.onload=r;e.onerror=j;document.head.appendChild(e)});
+async function pdfView(f){const v=$("#pv");try{if(!window.pdfjsLib)await ld(PJ+"pdf.min.js");pdfjsLib.GlobalWorkerOptions.workerSrc=PJ+"pdf.worker.min.js";const d=await pdfjsLib.getDocument({data:new Uint8Array(await f.arrayBuffer())}).promise;v.textContent="";const w=Math.min(innerWidth*.85,800);for(let i=1;i<=Math.min(d.numPages,30);i++){const pg=await d.getPage(i),v0=pg.getViewport({scale:1}),vp=pg.getViewport({scale:w/v0.width}),c=document.createElement("canvas");c.width=vp.width;c.height=vp.height;c.style.cssText="display:block;max-width:100%;margin:0 auto 8px;border:1px solid var(--bd)";v.appendChild(c);await pg.render({canvasContext:c.getContext("2d"),viewport:vp}).promise}if(d.numPages>30)v.append("(প্রথম ৩০ পৃষ্ঠা দেখানো হয়েছে)")}catch(e){v.textContent="PDF প্রিভিউ দেখানো গেল না।"}}
+const cl=()=>{$("#md").style.display="none";$("#bx").innerHTML=""};
+$("#md").onclick=e=>{if(e.target.id==="md")cl()};
+const STORED=/\.(zip|7z|rar|gz|bz2|xz|jpe?g|png|gif|webp|mp3|mp4|m4a|mkv|webm|mov)$/i;
+const CT=(()=>{const t=new Uint32Array(256);for(let n=0;n<256;n++){let c=n;for(let k=0;k<8;k++)c=c&1?0xEDB88320^(c>>>1):c>>>1;t[n]=c>>>0}return t})();
+const crc32=d=>{let c=-1;for(let i=0;i<d.length;i++)c=CT[(c^d[i])&255]^(c>>>8);return(c^-1)>>>0};
+const deflate=async d=>new Uint8Array(await new Response(new Blob([d]).stream().pipeThrough(new CompressionStream("deflate-raw"))).arrayBuffer());
+const SB=new Uint8Array(256),M2=new Uint8Array(256);
+for(let i=0;i<256;i++)M2[i]=((i<<1)^(i&128?27:0))&255;
+{let p=1,q=1;const r=(v,n)=>((v<<n)|(v>>(8-n)))&255;do{p=(p^M2[p])&255;q=(q^(q<<1))&255;q=(q^(q<<2))&255;q=(q^(q<<4))&255;if(q&128)q^=9;SB[p]=q^r(q,1)^r(q,2)^r(q,3)^r(q,4)^0x63}while(p!==1);SB[0]=0x63}
+function ek(k){const w=new Uint8Array(240);w.set(k);let rc=1;for(let i=32;i<240;i+=4){let t=w.slice(i-4,i);if(i%32===0){t=[SB[t[1]]^rc,SB[t[2]],SB[t[3]],SB[t[0]]];rc=M2[rc]}else if(i%32===16)t=t.map(x=>SB[x]);for(let j=0;j<4;j++)w[i+j]=w[i-32+j]^t[j]}return w}
+function eb(w,s,t){for(let i=0;i<16;i++)s[i]^=w[i];for(let r=1;r<15;r++){for(let i=0;i<16;i++)t[i]=SB[s[(i+4*(i&3))&15]];if(r<14)for(let c=0;c<16;c+=4){const a=t[c],b=t[c+1],d=t[c+2],e=t[c+3];s[c]=M2[a]^M2[b]^b^d^e;s[c+1]=a^M2[b]^M2[d]^d^e;s[c+2]=a^b^M2[d]^M2[e]^e;s[c+3]=M2[a]^a^b^d^M2[e]}else s.set(t);for(let i=0;i<16;i++)s[i]^=w[16*r+i]}}
+function ctr(k,d){const w=ek(k),o=new Uint8Array(d.length),s=new Uint8Array(16),t=new Uint8Array(16),dv=new DataView(s.buffer);for(let b=0,n=1;b<d.length;b+=16,n++){s.fill(0);dv.setUint32(0,n,true);eb(w,s,t);for(let i=0;i<16&&b+i<d.length;i++)o[b+i]=d[b+i]^s[i]}return o}
+const u16=v=>[v&255,(v>>8)&255],u32=v=>[v&255,(v>>8)&255,(v>>16)&255,(v>>>24)&255];
+async function buildZip(items,pw,prog){
+ const te=new TextEncoder(),parts=[],cen=[];let off=0;
+ for(let k=0;k<items.length;k++){
+  const x=items[k],raw=new Uint8Array(await x.file.arrayBuffer()),name=te.encode(x.path);
+  if(raw.length>4e9)throw new Error("ফাইল ৪ GB-এর বেশি: "+x.path);
+  let m=0,d=raw;
+  if(raw.length>0&&!STORED.test(x.path)){try{const c=await deflate(raw);if(c.length<raw.length){m=8;d=c}}catch(e){}}
+  let cr=crc32(raw),meth=m,extra=new Uint8Array(0),fl=0x800,ver=20;
+  if(pw){
+   const salt=crypto.getRandomValues(new Uint8Array(16)),kb=await crypto.subtle.importKey("raw",te.encode(pw),"PBKDF2",false,["deriveBits"]),
+   dk=new Uint8Array(await crypto.subtle.deriveBits({name:"PBKDF2",hash:"SHA-1",salt,iterations:1000},kb,528)),
+   enc=ctr(dk.slice(0,32),d),hk=await crypto.subtle.importKey("raw",dk.slice(32,64),{name:"HMAC",hash:"SHA-1"},false,["sign"]),
+   mac=new Uint8Array(await crypto.subtle.sign("HMAC",hk,enc)).slice(0,10),o=new Uint8Array(18+enc.length+10);
+   o.set(salt);o.set(dk.slice(64,66),16);o.set(enc,18);o.set(mac,18+enc.length);
+   d=o;extra=new Uint8Array([1,0x99,7,0,2,0,0x41,0x45,3,m,0]);meth=99;cr=0;fl|=1;ver=51}
+  const dt=new Date(x.file.lastModified||Date.now()),tm=(dt.getHours()<<11)|(dt.getMinutes()<<5)|(dt.getSeconds()>>1),
+  dd=(Math.max(0,dt.getFullYear()-1980)<<9)|((dt.getMonth()+1)<<5)|dt.getDate(),
+  mid=[...u16(tm),...u16(dd),...u32(cr),...u32(d.length),...u32(raw.length),...u16(name.length),...u16(extra.length)],
+  loc=new Uint8Array([...u32(0x04034b50),...u16(ver),...u16(fl),...u16(meth),...mid]);
+  cen.push(new Uint8Array([...u32(0x02014b50),...u16(ver),...u16(ver),...u16(fl),...u16(meth),...mid,...u16(0),...u16(0),...u16(0),...u32(0),...u32(off)]),name,extra);
+  parts.push(loc,name,extra,d);off+=loc.length+name.length+extra.length+d.length;
+  if(prog)await prog(k+1)}
+ const cs=cen.reduce((a,b)=>a+b.length,0),n=items.length;
+ return new Blob([...parts,...cen,new Uint8Array([...u32(0x06054b50),...u16(0),...u16(0),...u16(n),...u16(n),...u32(cs),...u32(off),...u16(0)])],{type:"application/zip"})}
+
+$("#mk").onclick=async()=>{
+ const R=$("#res");
+ if(!items.length){R.textContent="আগে ফাইল যোগ করুন।";return}
+ $("#mk").disabled=true;$("#sv").hidden=true;$("#bar").hidden=false;$("#fl").style.width="0";R.textContent="শুরু হচ্ছে…";
+ try{
+  const pw=$("#pw").value,tot=items.reduce((x,y)=>x+y.file.size,0);
+  const sp=f=>{f=Math.max(0,Math.min(1,f));$("#fl").style.width=(f*100).toFixed(1)+"%";return f};let dn=0;
+  const prog=async n=>{dn=items.slice(0,n).reduce((a,y)=>a+y.file.size,0);const f=sp(tot?dn/tot:n/items.length);R.textContent=`চলছে… ${n}/${items.length} ফাইল (${Math.round(f*100)}%)`;await new Promise(r=>setTimeout(r))};
+  if(typeof zip!=="undefined"){
+   zip.configure({useWebWorkers:false,useCompressionStream:false});
+   const o={level:9};if(pw){o.password=pw;o.encryptionStrength=3}
+   const w=new zip.ZipWriter(new zip.BlobWriter("application/zip"),o);let n=0;
+   for(const x of items){await w.add(x.path,new zip.BlobReader(x.file),{level:STORED.test(x.path)?0:9,lastModDate:new Date(x.file.lastModified),onprogress:async(l,t)=>{const f=sp(tot?(dn+x.file.size*(t?l/t:0))/tot:0);R.textContent=`চলছে… ${n+1}/${items.length} ফাইল (${Math.round(f*100)}%)`}});await prog(++n)}
+   zb=await w.close()}
+  else zb=await buildZip(items,pw,prog);
+  sp(1);const pc=tot?Math.max(0,(1-zb.size/tot)*100).toFixed(1):0;
+  R.textContent=`তৈরি হয়েছে: ${sz(tot)} → ${sz(zb.size)} (${pc}% ছোট)${pw?" · পাসওয়ার্ড সুরক্ষিত":""}`;
+  $("#sv").hidden=false}
+ catch(e){$("#bar").hidden=true;R.textContent="ব্যর্থ: "+(e&&e.message||e)}
+ $("#mk").disabled=false};
+$("#sv").onclick=async()=>{
+ if(!zb)return;let d=null;try{d=window.claude&&await claude.use("downloads")}catch(e){}
+ if(!d){$("#res").textContent="এই ভিউতে সেভ করা যাচ্ছে না। আর্টিফ্যাক্টটি claude.ai-তে খুলে চেষ্টা করুন।";return}
+ const nm=($("#nm").value.trim()||"archive").replace(/\.zip$/i,"")+".zip";
+ try{await d.save({filename:nm,data:zb})}catch(e){if(e&&e.code!=="declined")$("#res").textContent="সেভ হয়নি ("+(e.code||"ত্রুটি")+")"}};
+render();
+</script></body></html>
