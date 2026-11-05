@@ -22,13 +22,13 @@ button:hover{border-color:var(--ac)}
 #g{flex:1;overflow:auto;-webkit-overflow-scrolling:touch}
 table{border-collapse:separate;border-spacing:0}
 th,td{border-right:1px solid var(--bd);border-bottom:1px solid var(--bd);height:28px;padding:0 6px;white-space:nowrap}
-td{min-width:96px;max-width:96px;overflow:hidden;text-overflow:ellipsis;cursor:cell}
+td{min-width:96px;max-width:320px;height:22px;padding:3px 6px;white-space:normal;overflow-wrap:anywhere;word-break:break-word;vertical-align:middle;cursor:cell}
 td.n{text-align:right}td img{height:24px;vertical-align:middle;image-rendering:auto}
 th{background:var(--hd);color:var(--mu);font-weight:500;position:sticky;top:0;z-index:2}
 th.rh{left:0;top:auto;z-index:1;min-width:34px;text-align:center}th.cr{left:0;z-index:3}
 td.sel{outline:2px solid var(--ac);outline-offset:-2px;background:var(--sl)}
 .em{padding:20px;color:var(--mu)}
-.ci{width:100%;box-sizing:border-box;border:0;outline:0;background:transparent;font:inherit;color:inherit;padding:0;height:26px;display:block}
+.ci{width:100%;box-sizing:border-box;border:0;outline:0;background:transparent;font:inherit;color:inherit;padding:0;display:block;resize:none;overflow:hidden;min-height:20px;overflow-wrap:anywhere}
 body[data-m=fm] .sh,body[data-m=sh] .fm{display:none}
 .bc{padding:10px 12px;color:var(--mu)}.bc a{cursor:pointer;color:var(--ac)}
 .its{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:10px;padding:10px}
@@ -139,14 +139,20 @@ $("#g").onclick=e=>{const t=e.target.closest("td");if(t){if(E&&E.td===t)return;p
 
 const setv=v=>{const f=file();if(!f)return;const k=colL(P.c)+P.r;if(v==="")delete f.cells[k];else f.cells[k]=v};
 function refresh(){const f=file();if(!f)return;const m={};document.querySelectorAll("#g td").forEach(td=>{if(E&&E.td===td)return;const on=+td.dataset.r===P.r&&+td.dataset.c===P.c,v=calc(f,colL(+td.dataset.c)+td.dataset.r,m);td.innerHTML=show(v);td.className=(typeof v==="number"?"n":"")+(on?" sel":"")})}
-function endEdit(){if(!E)return;E=null;save();refresh()}
-function startEdit(td){endEdit();const f=file();if(!f)return;const o=f.cells[colL(P.c)+P.r],raw=o==null?"":String(o),ci=document.createElement("input");ci.className="ci";ci.value=raw.startsWith("img:")?"":raw;td.innerHTML="";td.appendChild(ci);E={td,ci,o};
- ci.oninput=()=>{setv(ci.value);$("#fb").value=ci.value};
+function endEdit(){if(!E)return;E.td.style.width="";E=null;save();refresh()}
+function startEdit(td){endEdit();const f=file();if(!f)return;const o=f.cells[colL(P.c)+P.r],raw=o==null?"":String(o),ci=document.createElement("textarea");ci.rows=1;ci.className="ci";ci.value=raw.startsWith("img:")?"":raw;td.innerHTML="";td.appendChild(ci);
+ const fit=()=>{const x=document.createElement("canvas").getContext("2d");x.font=getComputedStyle(ci).font;
+  const w=Math.max(0,...ci.value.split("\n").map(l=>x.measureText(l).width));
+  td.style.width=Math.min(320,Math.max(96,Math.ceil(w)+6))+"px";
+  ci.style.height="auto";ci.style.height=ci.scrollHeight+"px"};
+ E={td,ci,o,fit};
+ ci.oninput=()=>{setv(ci.value);$("#fb").value=ci.value;fit()};
  ci.onblur=()=>{if(E&&E.ci===ci)endEdit()};
  ci.onkeydown=ev=>{const k=ev.key;if(k==="Enter"||k==="ArrowDown"){ev.preventDefault();go(P.r+1,P.c)}else if(k==="ArrowUp"){ev.preventDefault();go(P.r-1,P.c)}else if(k==="Tab"){ev.preventDefault();go(P.r,P.c+(ev.shiftKey?-1:1))}else if(k==="Escape"){const old=E.o,kk=colL(P.c)+P.r;if(old==null)delete file().cells[kk];else file().cells[kk]=old;endEdit();pick(P.r,P.c,1)}};
- ci.focus()}
+
+ ci.focus();fit()}
 function go(r,c){endEdit();pick(r,c);const td=document.querySelector(`td[data-r="${P.r}"][data-c="${P.c}"]`);if(td)startEdit(td)}
-$("#fb").oninput=()=>{if(!file())return;const v=$("#fb").value;setv(v);if(E)E.ci.value=v};
+$("#fb").oninput=()=>{if(!file())return;const v=$("#fb").value;setv(v);if(E){E.ci.value=v;E.fit()}};
 $("#fb").onblur=()=>{save();refresh()};
 $("#fb").onkeydown=e=>{if(e.key==="Enter"){e.preventDefault();save();refresh();go(P.r+1,P.c)}else if(e.key==="Escape")$("#fb").blur()};
 document.onkeydown=e=>{if(e.target.matches("input,textarea")||$("#md").style.display==="flex"||document.body.dataset.m!=="sh")return;
