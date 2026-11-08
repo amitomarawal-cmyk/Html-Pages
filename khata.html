@@ -84,7 +84,7 @@
                     <i class="fa-solid fa-upload"></i>
                     <input type="file" id="importFileInput" accept=".json" class="hidden" onchange="importData(event)">
                 </label>
-                <button onclick="confirmReset()" title="Reset this account tab" class="w-9 h-9 rounded-xl bg-rose-950/40 hover:bg-rose-900/60 text-rose-400 flex items-center justify-center text-xs border border-rose-800/40 transition-all active:scale-95">
+                <button onclick="confirmReset()" title="Clear this tab's log (balance stays)" class="w-9 h-9 rounded-xl bg-rose-950/40 hover:bg-rose-900/60 text-rose-400 flex items-center justify-center text-xs border border-rose-800/40 transition-all active:scale-95">
                     <i class="fa-solid fa-rotate-right"></i>
                 </button>
             </div>
@@ -108,24 +108,6 @@
             </div>
 
             <h2 id="totalBalance" class="text-2xl font-black tracking-tight text-white mb-2">$0.00</h2>
-
-            <div class="grid grid-cols-2 gap-2 pt-2 border-t border-slate-800/80 text-xs">
-                <!-- Income Stat -->
-                <div class="bg-slate-900/60 p-2 rounded-xl border border-slate-800/60">
-                    <div class="flex items-center gap-1.5 text-[11px] text-emerald-400 font-semibold uppercase mb-0.5">
-                        <i class="fa-solid fa-arrow-down-left"></i> Cash In
-                    </div>
-                    <div id="totalIncome" class="font-extrabold text-sm text-emerald-400">$0.00</div>
-                </div>
-
-                <!-- Expense Stat -->
-                <div class="bg-slate-900/60 p-2 rounded-xl border border-slate-800/60">
-                    <div class="flex items-center gap-1.5 text-[11px] text-rose-400 font-semibold uppercase mb-0.5">
-                        <i class="fa-solid fa-arrow-up-right"></i> Cash Flew Away 💸
-                    </div>
-                    <div id="totalExpense" class="font-extrabold text-sm text-rose-400">$0.00</div>
-                </div>
-            </div>
         </section>
 
         <!-- 2. QUICK ADD TRANSACTION FORM (High Density Input) -->
@@ -205,14 +187,14 @@
         </section>
 
         <!-- 4. RECENT TRANSACTIONS LIST -->
-        <section class="glass-card p-3 rounded-2xl shadow-xl border border-slate-800 space-y-2 flex-1 flex flex-col hidden">
+        <section class="glass-card p-3 rounded-2xl shadow-xl border border-slate-800 space-y-2 flex-1 flex flex-col">
             <div class="flex items-center justify-between">
                 <h3 class="text-xs font-bold text-white flex items-center gap-1.5">
                     <i class="fa-solid fa-receipt text-indigo-400"></i> Transaction Log
                 </h3>
 
                 <!-- Filter Option -->
-                <select id="filterType" onchange="renderTransactionHistory()" class="bg-slate-900 border border-slate-800 text-[11px] text-slate-300 rounded-lg px-2 py-1.5 focus:outline-none">
+                <select id="filterType" onchange="onFilterChange()" class="bg-slate-900 border border-slate-800 text-[11px] text-slate-300 rounded-lg px-2 py-1.5 focus:outline-none">
                     <option value="all">All Items</option>
                     <option value="income">Incomes</option>
                     <option value="expense">Expenses</option>
@@ -228,6 +210,14 @@
                 <i class="fa-solid fa-ghost text-xl mb-1"></i>
                 <p class="text-xs font-medium">No cash moves recorded!</p>
             </div>
+
+            <!-- Pagination: 1 2 3 ... + See more -->
+            <nav id="txPager" aria-label="Transaction log pages" class="hidden pt-1 space-y-1.5">
+                <p id="txPagerInfo" class="text-[11px] text-slate-500 text-center"></p>
+                <div id="txPagerButtons" class="flex flex-wrap items-center justify-center gap-1"></div>
+            </nav>
+
+            <p class="text-[11px] text-slate-600 text-center pt-1">Deleting a log never changes your balance.</p>
         </section>
 
     </div>
@@ -282,6 +272,13 @@
         const MAX_NAME_LEN = 24;
         let chartMode = 'comparison'; // 'expenses' or 'comparison'
         let chartInstance = null;
+        const PAGE_SIZE = 10;       // log entries loaded per page
+        let logPage = 1;
+
+        function round2(n) { return Math.round((Number(n) + Number.EPSILON) * 100) / 100; }
+        function netOf(list) {
+            return round2(list.reduce((sum, t) => t.type === 'income' ? sum + Number(t.amount) : sum - Number(t.amount), 0));
+        }
 
         window.onload = function() {
             document.getElementById('txDate').value = getLocalDateString(new Date());
@@ -299,28 +296,25 @@
             return String(n === undefined || n === null ? '' : n).replace(/\s+/g, ' ').trim().slice(0, MAX_NAME_LEN);
         }
 
-        function createLedger(name, txs, carry) {
-            return { id: makeId('acc'), name: name, transactions: txs || [], carry: Number.isFinite(carry) ? carry : 0 };
+        // balance is stored on its own. It changes ONLY when an Income / Expense entry is added.
+        // `extra` is only used once, to seed the balance from older data (carry-forward).
+        function createLedger(name, txs, extra) {
+            const list = txs || [];
+            return { id: makeId('acc'), name: name, transactions: list, balance: round2(netOf(list) + (Number.isFinite(extra) ? extra : 0)) };
         }
 
         function getActiveLedger() {
             return ledgers.find(l => l.id === activeLedgerId) || ledgers[0];
         }
 
-        // Transactions older than 5 years are folded into the tab's carry-forward balance
-        function rollOverOld(ledger) {
-            const cutoffYear = new Date().getFullYear() - 5;
-            const valid = (Array.isArray(ledger.transactions) ? ledger.transactions : []).filter(isValidTransaction);
-            const isOld = t => parseInt(t.date.split('-')[0]) <= cutoffYear;
-            const oldNet = valid.filter(isOld).reduce((sum, t) => t.type === 'income' ? sum + Number(t.amount) : sum - Number(t.amount), 0);
-            ledger.carry = (Number.isFinite(Number(ledger.carry)) ? Number(ledger.carry) : 0) + oldNet;
-            ledger.transactions = valid.filter(t => !isOld(t));
-            return ledger;
-        }
-
         function sanitizeLedger(l) {
             if (!l || typeof l !== 'object' || typeof l.id !== 'string' || !l.id) return null;
-            return rollOverOld({ id: l.id, name: cleanName(l.name) || 'Account', transactions: l.transactions, carry: l.carry });
+            const valid = normalizeTransactions((Array.isArray(l.transactions) ? l.transactions : []).filter(isValidTransaction));
+            // Older saves have no stored balance: seed it once from the old totals (+ old carry-forward)
+            const balance = (typeof l.balance === 'number' && Number.isFinite(l.balance))
+                ? l.balance
+                : round2(netOf(valid) + (Number(l.carry) || 0));
+            return { id: l.id, name: cleanName(l.name) || 'Account', transactions: valid, balance: balance };
         }
 
         function loadDemoLedgers() {
@@ -350,7 +344,7 @@
                     }
                     if (legacyList) {
                         const carry = parseFloat(localStorage.getItem('finflow_carry_forward') || '0');
-                        const main = rollOverOld(createLedger('Main', legacyList, carry));
+                        const main = createLedger('Main', normalizeTransactions(legacyList.filter(isValidTransaction)), Number.isFinite(carry) ? carry : 0);
                         ledgers = [main];
                         activeLedgerId = main.id;
                     } else {
@@ -430,6 +424,7 @@
             getActiveLedger().transactions = transactions;
             activeLedgerId = id;
             transactions = target.transactions;
+            logPage = 1;
             saveData();
             renderApp();
         }
@@ -476,6 +471,7 @@
                 ledgers.push(fresh);
                 activeLedgerId = fresh.id;
                 transactions = fresh.transactions;
+                logPage = 1;
             } else {
                 getActiveLedger().name = name;
             }
@@ -505,6 +501,7 @@
             const next = ledgers[Math.min(idx, ledgers.length - 1)];
             activeLedgerId = next.id;
             transactions = next.transactions;
+            logPage = 1;
             saveData();
             renderApp();
         }
@@ -584,6 +581,10 @@
             };
 
             transactions.unshift(newTx);
+            // The ONLY places the balance changes: adding income / adding expense
+            const led = getActiveLedger();
+            led.balance = round2((Number(led.balance) || 0) + (type === 'income' ? amount : -amount));
+            logPage = 1;
             saveData();
             renderApp();
 
@@ -592,6 +593,7 @@
         }
 
         function deleteTransaction(id) {
+            // Only removes the log entry. Balance is NOT touched.
             transactions = transactions.filter(t => t.id !== id);
             saveData();
             renderApp();
@@ -605,21 +607,9 @@
         }
 
         function renderSummary() {
-            let totalIncome = 0;
-            let totalExpense = 0;
-
-            transactions.forEach(t => {
-                const amt = parseFloat(t.amount) || 0;
-                if (t.type === 'income') totalIncome += amt;
-                if (t.type === 'expense') totalExpense += amt;
-            });
-
-            const carryForward = Number((getActiveLedger() || {}).carry) || 0;
-            const netBalance = totalIncome - totalExpense + carryForward;
+            const netBalance = Number((getActiveLedger() || {}).balance) || 0;
 
             document.getElementById('totalBalance').textContent = formatCurrency(netBalance);
-            document.getElementById('totalIncome').textContent = formatCurrency(totalIncome);
-            document.getElementById('totalExpense').textContent = formatCurrency(totalExpense);
 
             const vibeBadge = document.getElementById('vibeBadge');
             if (netBalance < 0) {
@@ -634,6 +624,72 @@
             }
         }
 
+        function onFilterChange() {
+            logPage = 1;
+            renderTransactionHistory();
+        }
+
+        function goToPage(p) {
+            logPage = p;
+            renderTransactionHistory();
+        }
+
+        function getPageList(cur, total) {
+            if (total <= 7) return Array.from({ length: total }, (_, i) => i + 1);
+            const set = new Set([1, total, cur - 1, cur, cur + 1]);
+            const pages = [...set].filter(p => p >= 1 && p <= total).sort((x, y) => x - y);
+            const out = [];
+            pages.forEach((p, i) => {
+                if (i > 0 && p - pages[i - 1] > 1) out.push('…');
+                out.push(p);
+            });
+            return out;
+        }
+
+        function makePagerBtn(label, onClick, opts) {
+            opts = opts || {};
+            const btn = document.createElement('button');
+            btn.type = 'button';
+            btn.innerHTML = label;
+            if (opts.aria) btn.setAttribute('aria-label', opts.aria);
+            if (opts.current) btn.setAttribute('aria-current', 'page');
+            btn.disabled = !!opts.disabled;
+            btn.className = 'h-8 min-w-[2rem] px-2.5 rounded-lg text-xs font-bold border transition-all active:scale-95 ' +
+                (opts.current ? 'bg-indigo-600 text-white border-indigo-400/40'
+                    : opts.disabled ? 'bg-slate-900/60 text-slate-600 border-slate-800 cursor-not-allowed'
+                    : 'bg-slate-900 text-slate-300 border-slate-800 hover:bg-slate-800');
+            if (!opts.disabled && !opts.current) btn.addEventListener('click', onClick);
+            return btn;
+        }
+
+        function renderPager(totalPages, total, startIdx, endIdx) {
+            const pager = document.getElementById('txPager');
+            const btns = document.getElementById('txPagerButtons');
+            btns.innerHTML = '';
+            if (totalPages <= 1) { pager.classList.add('hidden'); return; }
+            pager.classList.remove('hidden');
+
+            document.getElementById('txPagerInfo').textContent =
+                'Showing ' + (startIdx + 1) + '–' + endIdx + ' of ' + total;
+
+            btns.appendChild(makePagerBtn('<i class="fa-solid fa-chevron-left text-[10px]"></i>',
+                () => goToPage(logPage - 1), { disabled: logPage <= 1, aria: 'Previous page' }));
+
+            getPageList(logPage, totalPages).forEach(p => {
+                if (p === '…') {
+                    const dots = document.createElement('span');
+                    dots.className = 'px-1 text-xs text-slate-500';
+                    dots.textContent = '…';
+                    btns.appendChild(dots);
+                } else {
+                    btns.appendChild(makePagerBtn(String(p), () => goToPage(p), { current: p === logPage, aria: 'Page ' + p }));
+                }
+            });
+
+            btns.appendChild(makePagerBtn('See more <i class="fa-solid fa-chevron-right text-[10px] ml-0.5"></i>',
+                () => goToPage(logPage + 1), { disabled: logPage >= totalPages, aria: 'Next page' }));
+        }
+
         function renderTransactionHistory() {
             const listContainer = document.getElementById('txList');
             const emptyNotice = document.getElementById('emptyListNotice');
@@ -642,16 +698,25 @@
             const filtered = transactions.filter(t => filterType === 'all' || t.type === filterType)
                                        .sort((a, b) => b.date.localeCompare(a.date));
 
+            const total = filtered.length;
+            const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
+            if (logPage > totalPages) logPage = totalPages;
+            if (logPage < 1) logPage = 1;
+            const startIdx = (logPage - 1) * PAGE_SIZE;
+            const endIdx = Math.min(startIdx + PAGE_SIZE, total);
+
             listContainer.innerHTML = '';
 
-            if (filtered.length === 0) {
+            if (total === 0) {
                 emptyNotice.classList.remove('hidden');
                 emptyNotice.classList.add('flex');
             } else {
                 emptyNotice.classList.add('hidden');
                 emptyNotice.classList.remove('flex');
 
-                filtered.forEach(t => {
+                // Only this page's entries are built in the DOM
+                const frag = document.createDocumentFragment();
+                filtered.slice(startIdx, endIdx).forEach(t => {
                     const isIncome = t.type === 'income';
                     const item = document.createElement('div');
                     item.className = "flex items-center justify-between p-2.5 rounded-xl bg-slate-900/80 border border-slate-800/80 hover:bg-slate-800/60 transition-all";
@@ -672,15 +737,18 @@
                             <span class="text-xs font-bold ${isIncome ? 'text-emerald-400' : 'text-rose-400'}">
                                 ${isIncome ? '+' : '-'}${formatCurrency(t.amount)}
                             </span>
-                            <button type="button" aria-label="Delete transaction" class="delete-transaction text-slate-500 hover:text-rose-400 w-8 h-8 flex items-center justify-center text-xs transition-colors">
+                            <button type="button" aria-label="Delete log entry" class="delete-transaction text-slate-500 hover:text-rose-400 w-8 h-8 flex items-center justify-center text-xs transition-colors">
                                 <i class="fa-solid fa-xmark" aria-hidden="true"></i>
                             </button>
                         </div>
                     `;
                     item.querySelector('.delete-transaction').addEventListener('click', () => deleteTransaction(safeId));
-                    listContainer.appendChild(item);
+                    frag.appendChild(item);
                 });
+                listContainer.appendChild(frag);
             }
+
+            renderPager(totalPages, total, startIdx, endIdx);
         }
 
         function toggleChartMode() {
@@ -803,13 +871,16 @@
         function parseImportedLedger(l, usedIds) {
             if (!l || typeof l !== 'object' || !Array.isArray(l.transactions) || !l.transactions.every(isValidTransaction)) return null;
             if (l.carry !== undefined && !Number.isFinite(Number(l.carry))) return null;
+            if (l.balance !== undefined && !Number.isFinite(Number(l.balance))) return null;
             const id = (typeof l.id === 'string' && l.id && !usedIds.has(l.id)) ? l.id : makeId('acc');
             usedIds.add(id);
+            const txs = normalizeTransactions(l.transactions);
             return {
                 id: id,
                 name: cleanName(l.name) || 'Account',
-                transactions: normalizeTransactions(l.transactions),
-                carry: Number(l.carry) || 0
+                transactions: txs,
+                // backups made before this version have no balance: seed it from their totals
+                balance: (l.balance !== undefined && l.balance !== null) ? Number(l.balance) : round2(netOf(txs) + (Number(l.carry) || 0))
             };
         }
 
@@ -834,6 +905,7 @@
                         ledgers.push(fresh);
                         activeLedgerId = fresh.id;
                         transactions = fresh.transactions;
+                        logPage = 1;
                         saveData();
                         renderApp();
                         showToast('Old backup added as a new account tab.');
@@ -844,6 +916,7 @@
                         ledgers = restored;
                         activeLedgerId = restored.some(l => l.id === imported.activeId) ? imported.activeId : restored[0].id;
                         transactions = getActiveLedger().transactions;
+                        logPage = 1;
                         saveData();
                         renderApp();
                         showToast('Backup restored successfully.');
@@ -861,15 +934,15 @@
         function confirmReset() {
             const target = getActiveLedger();
             showModal(
-                'Wipe "' + target.name + '"?',
-                'This will permanently delete all records in this account tab. Your other tabs are not affected.',
+                'Clear log of "' + target.name + '"?',
+                'This only clears the transaction log of this tab. Your balance will NOT change. Other tabs are not affected.',
                 function() {
                     transactions = [];
-                    target.carry = 0;
+                    logPage = 1;
                     saveData();
                     renderApp();
                 },
-                'Wipe All'
+                'Clear Log'
             );
         }
 
