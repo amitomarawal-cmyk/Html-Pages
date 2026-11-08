@@ -204,7 +204,11 @@ function solve(){
   if([f0,f1,f2,f3].every(isFinite)&&Math.abs(f2-(f0+2*sl))<tol&&Math.abs(f3-(f0-3*sl))<tol){
    if(sl===0)throw MTH;root=-f0/sl}
   else{
-   const g=[0];for(const m of [.01,.1,.5,1,2,3,5,10,20,50,100,1e3,1e4,1e5,1e6]){g.push(m);g.unshift(-m)}
+   const gs=new Set([0]);
+   for(const m of [.01,.1,.5,1,2,3,5,10,20,50,100,1e3,1e4,1e5,1e6]){gs.add(m);gs.add(-m)}
+   for(let i=1;i<=200;i++){const m=+(i*.05).toFixed(2);gs.add(m);gs.add(-m)}
+   for(let i=1;i<=2000;i++){const m=i*.5;gs.add(m);gs.add(-m)}
+   const g=[...gs].sort((p,q)=>p-q);
    const ys=g.map(f),cand=r=>{if(root===null||Math.abs(r)<Math.abs(root)||(Math.abs(r)===Math.abs(root)&&r>root))root=r};
    for(let j=0;j<g.length;j++){
     if(ys[j]===0)cand(g[j]);
@@ -212,7 +216,16 @@ function solve(){
      let a=g[j-1],b=g[j],fa=ys[j-1];
      for(let n=0;n<200;n++){const m=(a+b)/2,fm=f(m);if(fm===0){a=b=m;break}if(fm*fa<0)b=m;else{a=m;fa=fm}}
      const r=(a+b)/2;if(Math.abs(f(r))<1e-6*(1+Math.abs(r)))cand(r)}}
-   if(root===null)throw MTH}
+   if(root===null){
+    /* roots where the graph only touches zero (no sign change): refine local minima of |f| */
+    for(let j=1;j<g.length-1;j++){
+     const y=Math.abs(ys[j]);
+     if(!isFinite(y)||!isFinite(ys[j-1])||!isFinite(ys[j+1])||y>Math.abs(ys[j-1])||y>Math.abs(ys[j+1]))continue;
+     let a=g[j-1],b=g[j+1];
+     for(let n=0;n<100;n++){const m1=a+(b-a)/3,m2=b-(b-a)/3;if(Math.abs(f(m1))<Math.abs(f(m2)))b=m2;else a=m1}
+     const r=(a+b)/2;
+     if(Math.abs(f(r))<1e-9*(1+Math.abs(r)))cand(r)}
+    if(root===null)throw MTH}}
  }finally{vars[v]=old}
  vars[v]=root;ans=root;lbl=v+' = ';done=true;pushH(root)}
 function solveKey(){if(!ex.length)return;try{solve()}catch(e){msg=typeof e==='string'?e:SYN}}
