@@ -181,6 +181,7 @@ if(!c.animate){c.remove();return Promise.resolve()}
 const an=c.animate([{transform:c.classList.contains('up')?'translate(0,0) rotate(180deg)':'translate(0,0)'},{transform:'translate('+(cr.left-ar.left)+'px,'+(cr.top-ar.top)+'px)'+(c.classList.contains('up')?' rotate(180deg)':'')}],{duration:320,easing:'cubic-bezier(.9,0,.1,1)',fill:'forwards'});
 return an.finished.catch(()=>{}).then(()=>c.remove())}
 
+function mslide(m,rev){const h=m.from-4,j=[rev?slide(m.to,m.from):slide(m.from,m.to)];if(m.ca){const a=m.ca=='K'?[h+7,h+5]:[h,h+3];j.push(rev?slide(a[1],a[0]):slide(a[0],a[1]))}return Promise.all(j)}
 async function play(m){const id=G.id,s=cur(),sn=E.san(s,m,E.legal(s));busy=1;sel=null;ls=[];render();
 const h=m.from-4,job=[slide(m.from,m.to)];if(m.ca)job.push(m.ca=='K'?slide(h+7,h+5):slide(h,h+3));
 await Promise.all(job);if(id!=G.id||G.over)return;
@@ -269,11 +270,12 @@ else{const l=lab(a.loss);h+=` — <b style="color:${l[1]}">${l[0]}</b></p>`;
 if(a.loss>=15)h+=`<p>ভালো হতো: <b>${a.bsan}</b></p><p>${why(r,k-1,a)}</p><button data-n="b">সেরা চাল দেখো</button> <button data-n="l">একটু খেলে দেখো</button>`;
 else h+='<p>ইঞ্জিনের পছন্দের চালের কাছাকাছি।</p>'}}
 if(r.dm)h+='<p>'+r.dm+'</p>';$('rv').innerHTML=h}
-$('rv').onclick=e=>{const n=e.target.dataset.n,r=R;if(!r||n==null)return;
+$('rv').onclick=async e=>{const n=e.target.dataset.n,r=R;if(!r||n==null||r.bz)return;
 if(n=='x'){R=null;flip=G.mode=='ai'&&G.pl=='b';$('rv').hidden=true;render();ui();return}
 if(n=='l')return demo();
 if(n=='b'){r.pv=1;r.tmp=null;r.dm=''}
-else{r.pv=0;r.tmp=null;r.dm='';r.k=n=='0'?0:n=='9'?r.M.length:Math.max(0,Math.min(r.M.length,r.k+ +n))}
+else{if((n=='1'||n=='-1')&&!r.pv&&!r.tmp){const m=n=='1'?r.M[r.k]:r.M[r.k-1];if(m){r.bz=1;await mslide(m,n=='-1');r.bz=0;if(R!==r)return}}
+r.pv=0;r.tmp=null;r.dm='';r.k=n=='0'?0:n=='9'?r.M.length:Math.max(0,Math.min(r.M.length,r.k+ +n))}
 render();rv();ui()};
 $('ml').onclick=e=>{const k=e.target.dataset.k;if(R&&k&&+k<=R.M.length){R.k=+k;R.pv=0;R.tmp=null;R.dm='';render();rv();ui()}};
 async function demo(){const r=R,j=r.k-1;r.pv=0;const ln=await call('line',r.S[j],r.an[j].bm);if(R!==r)return;
