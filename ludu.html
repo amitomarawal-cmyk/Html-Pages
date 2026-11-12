@@ -1,0 +1,285 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>লুডু</title>
+<style>
+:root{--bg:#f5f2ea;--fg:#26241f;--mut:#7b766a;--card:#fff;--line:#e3dfd3;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#17161a;--fg:#ecebe6;--mut:#a09b8e;--card:#242229;--line:#37343c}}
+:root[data-theme="dark"]{--bg:#17161a;--fg:#ecebe6;--mut:#a09b8e;--card:#242229;--line:#37343c}
+html{height:100%;background:var(--bg);scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box;margin:0}
+[hidden]{display:none!important}
+body{min-height:100%;max-width:540px;margin:0 auto;padding:8px 10px;display:flex;flex-direction:column;gap:8px;background:var(--bg);color:var(--fg);font:15px/1.4 system-ui,"Noto Sans Bengali","Hind Siliguri",sans-serif}
+button{font:inherit;color:inherit;cursor:pointer;border:1px solid var(--line);background:var(--card);border-radius:10px;padding:6px 12px}
+header{display:flex;justify-content:space-between;align-items:center}
+header b{font-size:20px}
+.pr{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+.pr.top .pn{transform:rotate(180deg)}
+.pn{display:flex;align-items:center;gap:8px;min-height:68px;background:var(--card);border:2px solid var(--line);border-top:4px solid var(--c);border-radius:12px;padding:6px 8px;font-size:13px;line-height:1.25}
+.pn.on{border-color:var(--c)}
+.pn .in{flex:1;min-width:0}
+.pn small{display:block;color:var(--mut);font-size:11px}
+.sm{font-weight:600;font-size:12px}
+.pn .dice{width:56px;height:56px;padding:5px;flex:none}
+
+#bd{display:block;align-self:center;aspect-ratio:1;width:min(100%,max(260px,calc(100vh - 285px)));width:min(100%,max(260px,calc(100dvh - 285px)));border-radius:12px;border:1px solid var(--line);touch-action:manipulation}
+.tk{transition:transform .13s linear}
+.nt .tk{transition:none}
+.tk .hit{fill:transparent;pointer-events:none}
+.tk.m .hit{pointer-events:all;cursor:pointer}
+.tk .b{stroke:rgba(0,0,0,.4);stroke-width:.05}
+.tk.r .b{stroke:#fff;stroke-width:.06}
+.tk.m .b{animation:pl .5s infinite alternate}
+@keyframes pl{from{stroke:#000;stroke-width:.12}to{stroke:transparent;stroke-width:.12}}
+
+
+.dice{width:56px;height:56px;padding:6px;border:4px solid transparent;border-radius:12px;background:linear-gradient(#fff,#fff) padding-box,conic-gradient(var(--c,#999) var(--p,0%),var(--line) 0) border-box;display:grid;grid-template:repeat(3,1fr)/repeat(3,1fr);gap:2px}
+.dice i{border-radius:50%}
+.dice i.on{background:#222}
+.dice.go{animation:g .9s infinite}
+@keyframes g{50%{box-shadow:0 0 0 5px rgba(242,183,5,.55)}}
+#md{position:fixed;inset:0;z-index:9;background:rgba(0,0,0,.5);display:grid;place-items:center;padding:16px}
+.box{background:var(--card);border-radius:16px;padding:16px;width:min(100%,380px);max-height:90vh;max-height:90dvh;overflow:auto}
+.box h2{font-size:22px}
+.box h3{font-size:13px;color:var(--mut);margin:12px 0 4px}
+.goal{margin-top:4px;font-weight:600}
+.rule{margin:12px 0;font-size:12px;color:var(--mut)}
+.seg{display:flex;gap:4px;flex:1}
+.seg button{flex:1;padding:6px 4px;font-size:13px}
+.seg button.on{background:#26241f;color:#fff;border-color:#26241f}
+.row{display:flex;align-items:center;gap:8px;margin-top:6px}
+.row span{width:44px}
+.dot{display:inline-block;width:14px;height:14px;border-radius:50%;flex:none}
+.go2{width:100%;padding:12px;background:#22a45d;color:#fff;border:0;font-weight:700;font-size:16px}
+.ghost{width:100%;margin-top:6px}
+.two{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:14px}
+</style>
+</head>
+<body>
+<header><b>লুডু</b><button id="st">সেটিং / নতুন খেলা</button></header>
+<div class="pr top" id="pt"></div>
+<svg id="bd" viewBox="0 0 15 15"></svg>
+<div class="pr" id="pb"></div>
+<div id="md" hidden></div>
+<script>
+const C={yellow:{n:'হলুদ',h:'#f2b705',l:'#fbeaa8',s:0},blue:{n:'নীল',h:'#3b82f6',l:'#cfe0fd',s:13},red:{n:'লাল',h:'#e5484d',l:'#f9d2d4',s:26},green:{n:'সবুজ',h:'#22a45d',l:'#c8ecd7',s:39}};
+const ORDER=['yellow','blue','red','green'],SEL=['green','yellow','blue','red'];
+const P=[[6,1],[6,2],[6,3],[6,4],[6,5],[5,6],[4,6],[3,6],[2,6],[1,6],[0,6],[0,7],[0,8],[1,8],[2,8],[3,8],[4,8],[5,8],[6,9],[6,10],[6,11],[6,12],[6,13],[6,14],[7,14],[8,14],[8,13],[8,12],[8,11],[8,10],[8,9],[9,8],[10,8],[11,8],[12,8],[13,8],[14,8],[14,7],[14,6],[13,6],[12,6],[11,6],[10,6],[9,6],[8,5],[8,4],[8,3],[8,2],[8,1],[8,0],[7,0],[6,0]];
+const SAFE=new Set([0,8,13,21,26,34,39,47]),ROOM=56;
+const PIP=[[],[4],[0,8],[0,4,8],[0,2,6,8],[0,2,4,6,8],[0,2,3,5,6,8]];
+const BO={yellow:[0,0],blue:[9,0],red:[9,9],green:[0,9]};
+const RS=[[-.5,1.22],[.5,1.22],[-.25,.78],[.25,.78]];
+const NS='http://www.w3.org/2000/svg';
+const $=s=>document.querySelector(s),bd=$('#bd'),pt=$('#pt'),pb=$('#pb'),md=$('#md');
+const bn=n=>String(n).replace(/\d/g,d=>'০১২৩৪৫৬৭৮৯'[d]);
+const sleep=ms=>new Promise(r=>setTimeout(r,ms));
+const cfg={n:4,t:{green:'h',yellow:'a',blue:'a',red:'a'},lvl:'m',spd:750,snd:1};
+let G=null,ac;
+
+const H=(c,i)=>({yellow:[7,1+i],blue:[1+i,7],red:[7,13-i],green:[13-i,7]})[c];
+const bs=(c,k)=>[BO[c][0]+(k%2?4:2),BO[c][1]+(k>1?4:2)];
+function rs(c,k){const[a,b]=RS[k],[x,y]=({green:[a,b],red:[b,-a],blue:[-a,-b],yellow:[-b,a]})[c];return[7.5+x,7.5+y]}
+function xy(c,v,k){
+  if(v<0){const[x,y]=bs(c,k);return[x,y,.27]}
+  if(v===ROOM){const[x,y]=rs(c,k);return[x,y,.2]}
+  const[r,q]=v<=50?P[(C[c].s+v)%52]:H(c,v-51);return[q+.5,r+.5,.27]
+}
+const prog=p=>p.tk.reduce((s,v)=>s+(v<0?0:v/ROOM),0)/4;
+const can=(v,d)=>v===ROOM?false:v<0?d===6:d<=ROOM-v;
+const movable=()=>{const g=G;return g.pl[g.turn].tk.map((v,i)=>can(v,g.dice)?i:-1).filter(i=>i>=0)};
+
+function snd(t){
+  if(!cfg.snd)return;
+  try{
+    ac=ac||new(window.AudioContext||window.webkitAudioContext)();
+    const o=ac.createOscillator(),g=ac.createGain();
+    o.connect(g);g.connect(ac.destination);
+    o.type=t==='cap'?'sawtooth':'sine';
+    o.frequency.value={dice:220,move:420,cap:130,win:700,click:600}[t];
+    g.gain.value=.05;o.start();o.stop(ac.currentTime+(t==='win'?.4:.09));
+  }catch(e){}
+}
+
+function drawBoard(){
+  let s='<rect width="15" height="15" fill="#fffdf8"/>';
+  for(const c of ORDER){
+    const[x,y]=BO[c];
+    s+=`<rect x="${x}" y="${y}" width="6" height="6" fill="${C[c].h}"/><rect x="${x+1}" y="${y+1}" width="4" height="4" rx=".6" fill="#fffdf8"/>`;
+    for(let k=0;k<4;k++){const[a,b]=bs(c,k);s+=`<circle cx="${a}" cy="${b}" r=".45" fill="${C[c].l}"/>`}
+  }
+  const cell=(r,c,f)=>`<rect x="${c}" y="${r}" width="1" height="1" fill="${f}" stroke="#ddd8cb" stroke-width=".05"/>`;
+  P.forEach(([r,c],i)=>{
+    const o=ORDER.find(k=>C[k].s===i);
+    s+=cell(r,c,o?C[o].l:'#fffdf8');
+    if(SAFE.has(i))s+=`<text x="${c+.5}" y="${r+.55}" font-size=".6" text-anchor="middle" dominant-baseline="central" fill="${o?C[o].h:'#b9a86a'}">★</text>`;
+  });
+  for(const c of ORDER)for(let i=0;i<5;i++){const[r,q]=H(c,i);s+=cell(r,q,C[c].l)}
+  const tri={blue:'6,6 9,6 7.5,7.5',red:'9,6 9,9 7.5,7.5',green:'9,9 6,9 7.5,7.5',yellow:'6,9 6,6 7.5,7.5'};
+  for(const c of ORDER){
+    s+=`<polygon points="${tri[c]}" fill="${C[c].h}"/>`;
+    for(let k=0;k<4;k++){const[a,b]=rs(c,k);s+=`<circle cx="${a}" cy="${b}" r=".21" fill="#fff" fill-opacity=".35"/>`}
+  }
+  s+='<path d="M6 6L9 9M9 6L6 9" stroke="#fff" stroke-width=".08"/><rect x="6" y="6" width="3" height="3" fill="none" stroke="#fff" stroke-width=".08"/>';
+  bd.innerHTML=s;
+  const t=document.createElementNS(NS,'g');t.id='tk';bd.appendChild(t);
+}
+
+function showDice(v){const d=document.querySelector(`.dice[data-c="${G.pl[G.turn].c}"]`);if(d)[...d.children].forEach((e,i)=>e.className=PIP[v].includes(i)?'on':'')}
+function say(t,c){const m=(c?`<span style="color:${C[c].h}">●</span> `:'')+t;G.msg=m;const e=document.querySelector('.pn.on .sm');if(e)e.innerHTML=m}
+
+function render(){
+  const g=G;if(!g)return;
+  const cur=g.pl[g.turn],grp={};
+  g.pl.forEach(p=>p.tk.forEach((v,i)=>{if(v>=0&&v<ROOM){const[x,y]=xy(p.c,v,i),k=x+','+y;(grp[k]=grp[k]||[]).push(p.c+i)}}));
+  const mv=g.phase==='move'&&cur.type==='h'?movable():[];
+  g.pl.forEach((p,pi)=>p.tk.forEach((v,i)=>{
+    const e=p.el[i];let[x,y,r]=xy(p.c,v,i);
+    if(v>=0&&v<ROOM){const a=grp[x+','+y];if(a.length>1){const k=a.indexOf(p.c+i)%4;x+=k%2?.18:-.18;y+=k>1?.18:-.18;r=.16}}
+    e.style.transform=`translate(${x}px,${y}px)`;
+    e.b.setAttribute('r',r);e.d.setAttribute('r',r*.35);
+    e.classList.toggle('r',v===ROOM);
+    e.classList.toggle('m',pi===g.turn&&mv.includes(i));
+  }));
+  const act=g.pl.filter(p=>!p.rank),tot=act.reduce((s,p)=>s+prog(p),0),w={},mx=Math.max(0,...act.map(prog)),top=act.filter(p=>prog(p)===mx),lead=mx>0&&top.length===1?top[0]:null;
+  g.pl.forEach(p=>w[p.c]=!p.rank&&tot?prog(p)/tot*100:0);
+  const pan=c=>{const p=g.pl.find(q=>q.c===c);if(!p)return'<div></div>';const on=p===cur&&g.phase!=='over',go=on&&g.phase==='roll'&&p.type==='h';return`<div class="pn${on?' on':''}" style="--c:${C[c].h}"><div class="in"><b>${C[c].n}${p.rank?' '+['🥇','🥈','🥉','৪র্থ'][p.rank-1]:p===lead?' 👑':''}</b><small>${p.type==='a'?'কম্পিউটার':'মানুষ'} · রুমে ${bn(p.tk.filter(v=>v===ROOM).length)}/৪ · ${p.rank?'শেষ':'জয় '+bn(Math.round(w[c]))+'%'}</small><div class="sm">${on?g.msg||'':''}</div></div><button class="dice${go?' go':''}" data-c="${c}" style="--p:${w[c]}%" aria-label="ডাইস ফেলো">${[0,1,2,3,4,5,6,7,8].map(i=>`<i class="${PIP[p.last||1].includes(i)?'on':''}"></i>`).join('')}</button></div>`};
+  pt.innerHTML=pan('yellow')+pan('blue');pb.innerHTML=pan('green')+pan('red');
+
+
+}
+
+function startGame(){
+  const act=SEL.slice(0,cfg.n),t=$('#tk');
+  t.replaceChildren();
+  const pl=ORDER.filter(c=>act.includes(c)).map(c=>({c,type:cfg.t[c],tk:[-1,-1,-1,-1],el:[]}));
+  pl.forEach((p,pi)=>p.tk.forEach((_,i)=>{
+    const e=document.createElementNS(NS,'g');
+    e.setAttribute('class','tk');e.dataset.p=pi;e.dataset.t=i;
+    e.innerHTML=`<circle class="hit" r=".55"/><circle class="b" fill="${C[p.c].h}"/><circle fill="#fff" fill-opacity=".8" style="pointer-events:none"/>`;
+    e.b=e.children[1];e.d=e.children[2];
+    t.appendChild(e);p.el.push(e);
+  }));
+  G={pl,turn:Math.max(0,pl.findIndex(p=>p.c==='green')),dice:1,six:0,fin:[],phase:'roll'};
+  md.hidden=true;
+  bd.classList.add('nt');render();
+  requestAnimationFrame(()=>requestAnimationFrame(()=>bd.classList.remove('nt')));
+  turnStart();
+}
+
+async function turnStart(){
+  const g=G,p=g.pl[g.turn];
+  g.phase='roll';render();
+  say(p.type==='h'?`${C[p.c].n} — ডাইস ফেলো`:`${C[p.c].n} খেলছে…`,p.c);
+  if(p.type==='a'){await sleep(cfg.spd*.6+150);if(G!==g||g.phase!=='roll')return;roll()}
+}
+function next(){G.six=0;do G.turn=(G.turn+1)%G.pl.length;while(G.pl[G.turn].rank);turnStart()}
+
+async function roll(){
+  const g=G;if(!g||g.phase!=='roll')return;
+  g.phase='busy';render();snd('dice');
+  for(let i=0;i<6;i++){showDice(1+Math.random()*6|0);await sleep(70);if(G!==g)return}
+  const v=1+Math.random()*6|0,p=g.pl[g.turn];
+  showDice(v);g.dice=v;p.last=v;
+  if(v===6){
+    if(++g.six>=3){say('টানা তিন ছক্কা — চাল বাতিল',p.c);await sleep(900);if(G!==g)return;return next()}
+  }else g.six=0;
+  const ok=movable();
+  if(!ok.length){say(`${bn(v)} উঠেছে — কোনো চাল নেই`,p.c);await sleep(900);if(G!==g)return;return next()}
+  g.phase='move';
+  const same=new Set(ok.map(i=>p.tk[i])).size===1;
+  if(p.type==='a'){
+    say(`${bn(v)} উঠেছে`,p.c);render();
+    await sleep(cfg.spd*.6);if(G!==g)return;
+    return move(aiPick(p,ok,v));
+  }
+  if(same){say(`${bn(v)} উঠেছে`,p.c);render();await sleep(350);if(G!==g)return;return move(ok[0])}
+  say(`${bn(v)} উঠেছে — একটা গুটি বেছে নাও`,p.c);render();
+}
+
+function aiPick(p,ok,d){
+  if(cfg.lvl==='e')return ok[Math.random()*ok.length|0];
+  const hard=cfg.lvl==='h',others=G.pl.filter(o=>o!==p),at=c=>{let k=0;others.forEach(o=>o.tk.forEach(v=>{if(v>=0&&v<=50&&(C[o.c].s+v)%52===c)k++}));return k};
+  let best=-1e9,bi=ok[0];
+  for(const i of ok){
+    const f=p.tk[i],t=f<0?0:f+d;let s=t*1.2+Math.random()*4;
+    if(f<0)s+=hard?85:65;
+    if(t===ROOM)s+=hard?95:70;
+    if(t<=50){
+      const c=(C[p.c].s+t)%52;
+      if(SAFE.has(c))s+=hard?42:28;
+      else{
+        s+=at(c)*(hard?110:75);
+        for(let b=1;b<=6;b++)s-=at((c-b+52)%52)*(hard?18:8);
+      }
+    }
+    if(s>best){best=s;bi=i}
+  }
+  return bi;
+}
+
+async function move(i){
+  const g=G,p=g.pl[g.turn],d=g.dice;
+  g.phase='busy';
+  if(p.tk[i]<0){p.tk[i]=0;render();await sleep(200)}
+  else for(let s=0;s<d;s++){p.tk[i]++;render();await sleep(130);if(G!==g)return}
+  if(G!==g)return;
+  const v=p.tk[i];let cap=0;
+  if(v<=50){
+    const c=(C[p.c].s+v)%52;
+    if(!SAFE.has(c))g.pl.forEach(o=>{if(o!==p)o.tk.forEach((u,j)=>{if(u>=0&&u<=50&&(C[o.c].s+u)%52===c){o.tk[j]=-1;cap++}})});
+  }
+  render();
+  if(cap){snd('cap');say('গুটি কাটা পড়েছে — আবার চাল',p.c)}
+  else if(v===ROOM){snd('move');say(`রুমে ঢুকেছে! (${bn(p.tk.filter(x=>x===ROOM).length)}/৪) — আবার চাল`,p.c)}
+  else snd('move');
+  if(p.tk.every(x=>x===ROOM)){
+    g.fin.push(p);p.rank=g.fin.length;
+    const left=g.pl.filter(o=>!o.rank);
+    if(left.length<2){if(left[0]){left[0].rank=g.pl.length;g.fin.push(left[0])}g.phase='over';render();win();return}
+    snd('win');say(`${C[p.c].n} ${['১ম','২য়','৩য়'][p.rank-1]} হয়েছে! 🎉`,p.c);render();await sleep(1300);if(G!==g)return;return next();
+  }
+  if(d===6||cap||v===ROOM){if(!cap&&v!==ROOM)say('ছক্কা! আবার চাল',p.c);await sleep(700);if(G!==g)return;turnStart()}
+  else{await sleep(250);if(G!==g)return;next()}
+}
+
+bd.onclick=e=>{
+  const t=e.target.closest('.tk');if(!t||!G)return;
+  const g=G,pi=+t.dataset.p,i=+t.dataset.t;
+  if(g.phase==='move'&&pi===g.turn&&g.pl[pi].type==='h'&&movable().includes(i)){snd('click');move(i)}
+};
+[pt,pb].forEach(x=>x.onclick=e=>{const b=e.target.closest('.dice');if(b&&G&&G.phase==='roll'&&G.pl[G.turn].type==='h'&&b.dataset.c===G.pl[G.turn].c){snd('click');roll()}});
+
+const seg=(a,list,cur,c)=>`<div class="seg">${list.map(([v,l])=>`<button data-a="${a}" data-v="${v}"${c?` data-c="${c}"`:''} class="${String(cur)===String(v)?'on':''}">${l}</button>`).join('')}</div>`;
+function setup(){
+  const act=SEL.slice(0,cfg.n);
+  md.innerHTML=`<div class="box"><h2>লুডু</h2><p class="goal">মাঝের X রুমে সবার আগে চারটা গুটি ঢোকালে ১ম। বাকিরা ২য়, ৩য় হতে খেলা চালিয়ে যায়।</p>
+<h3>খেলোয়াড়</h3>${seg('n',[[2,'২'],[3,'৩'],[4,'৪']],cfg.n)}
+${act.map(c=>`<div class="row"><i class="dot" style="background:${C[c].h}"></i><span>${C[c].n}</span>${seg('t',[['h','মানুষ'],['a','কম্পিউটার']],cfg.t[c],c)}</div>`).join('')}
+<h3>কম্পিউটারের দক্ষতা</h3>${seg('lvl',[['e','সহজ'],['m','মাঝারি'],['h','কঠিন']],cfg.lvl)}
+<h3>গতি</h3>${seg('spd',[[1200,'ধীর'],[750,'স্বাভাবিক'],[380,'দ্রুত']],cfg.spd)}
+<h3>শব্দ</h3>${seg('snd',[[1,'চালু'],[0,'বন্ধ']],cfg.snd)}
+<p class="rule">৬ উঠলে গুটি বের হয় • ৬, গুটি কাটা বা রুমে ঢোকলে আবার চাল • টানা তিন ৬ এ চাল বাতিল • ঠিক সংখ্যা উঠলে তবেই রুমে ঢোকে</p>
+<button class="go2" data-a="start">খেলা শুরু</button>${G&&G.phase!=='over'?'<button class="ghost" data-a="close">ফিরে যাও</button>':''}</div>`;
+  md.hidden=false;
+}
+function win(){const R=['🥇','🥈','🥉','৪র্থ'];
+  snd('win');
+  md.innerHTML=`<div class="box" style="text-align:center"><div style="font-size:48px">🏆</div><h2>খেলা শেষ</h2><div style="margin-top:8px;text-align:left">${G.fin.map((p,i)=>`<div class="row"><b style="width:34px">${R[i]}</b><i class="dot" style="background:${C[p.c].h}"></i><span style="width:auto">${C[p.c].n}</span></div>`).join('')}</div><div class="two"><button class="go2" data-a="start">আবার খেলো</button><button class="ghost" style="margin:0" data-a="set">সেটিং</button></div></div>`;
+  md.hidden=false;
+}
+md.onclick=e=>{
+  const b=e.target.closest('button');if(!b)return;
+  const{a,v,c}=b.dataset;
+  if(a==='start')return startGame();
+  if(a==='close'){md.hidden=true;return}
+  if(a==='set')return setup();
+  if(a==='t')cfg.t[c]=v;else if(a==='lvl')cfg.lvl=v;else cfg[a]=+v;
+  setup();
+};
+$('#st').onclick=setup;
+drawBoard();setup();
+</script>
+</body>
+</html>
