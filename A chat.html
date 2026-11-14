@@ -147,7 +147,11 @@ async function start(user){
       const conv=CH.find(c=>c.id===m.conversation_id);
       const title=conv?(conv.type==='dm'?(sender.username||'Someone'):(conv.name+' — '+(sender.username||'?'))):'New message';
       pushNotif(title,m.body||'📎 File');
-      CH.some(c=>c.id===m.conversation_id)?view==='chats'&&renderChats():loadChats()}})
+      if(CH.some(c=>c.id===m.conversation_id)){
+        const idx=CH.findIndex(c=>c.id===m.conversation_id);
+        if(idx>0){const[c]=CH.splice(idx,1);c.last_msg_at=m.created_at;CH.unshift(c);cset('CH:'+me.id,CH)}
+        view==='chats'&&renderChats()
+      }else loadChats()}})
   .on('postgres_changes',{event:'DELETE',schema:'public',table:'messages'},p=>gone(p.old.id))
   .on('postgres_changes',{event:'*',schema:'public',table:'friendships'},()=>loadFriends())
   .on('postgres_changes',{event:'*',schema:'public',table:'conversation_members'},()=>loadChats())
@@ -163,12 +167,14 @@ function render(){({chats:renderChats,friends:renderFriends,groups:renderGroups}
 
 async function loadChats(){
  if(!CH.length){const a=await cget('CH:'+me.id);if(a){CH=a;if(view!=='friends')render()}}
- const{data:ms,error}=await SB.from('conversation_members').select('conversations(id,type,name,creator_id)').eq('user_id',me.id);
+ const{data:ms,error}=await SB.from('conversation_members').select('conversations(id,type,name,creator_id,last_msg_at)').eq('user_id',me.id);
  if(error)return;
  CH=(ms||[]).map(x=>x.conversations).filter(Boolean);
  const dm=CH.filter(c=>c.type==='dm').map(c=>c.id);
  if(dm.length){const{data:o}=await SB.from('conversation_members').select('conversation_id,user_id').in('conversation_id',dm).neq('user_id',me.id);
   await need((o||[]).map(x=>x.user_id));(o||[]).forEach(x=>{const c=CH.find(c=>c.id===x.conversation_id);if(c)c.peer=x.user_id})}
+ // sort: most recent message first
+ CH.sort((a,b)=>(b.last_msg_at||b.id||0)>(a.last_msg_at||a.id||0)?1:-1);
  cset('CH:'+me.id,CH);
  ((await ckeys())||[]).filter(k=>k.startsWith(me.id+':')&&!CH.some(c=>k===ck(c.id))).forEach(cdel);
  if(cur&&!CH.some(c=>c.id===cur.id)){cur=null;MSG=[];$('#app').classList.remove('co');$('#main').replaceChildren()}
@@ -299,7 +305,8 @@ function paint(m,q){const b=$('#msgs');if(!b||document.getElementById('m'+m.id))
 async function send(){const ta=$('#ta');if(!ta||!cur)return;const t=ta.value.trim(),c=cur;if(!t)return;ta.value='';
  if(t.length>100000)return upFile(new File([t],'long-text.txt',{type:'text/plain'}));
  const{data,error}=await SB.from('messages').insert({conversation_id:c.id,sender_id:me.id,body:t}).select().single();
- if(error){ta.value=t;return toast(error.message)}if(cur===c)addMsg(data)}
+ if(error){ta.value=t;return toast(error.message)}
+ if(cur===c){addMsg(data);const idx=CH.findIndex(x=>x.id===c.id);if(idx>0){const[cv]=CH.splice(idx,1);cv.last_msg_at=data.created_at;CH.unshift(cv);cset('CH:'+me.id,CH);renderChats()}}}
 async function upFile(f){if(!cur)return;const c=cur,st=$('#st');
  if(f.size>MAXF)return toast(f.name+': too large (free plan max 50 MB per file)');
  st.textContent='Uploading '+f.name+' ...';const path=`${c.id}/${me.id}/${crypto.randomUUID()}`;
