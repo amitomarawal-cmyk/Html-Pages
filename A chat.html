@@ -181,8 +181,17 @@ async function loadChats(){
  if(view!=='friends')render()}
 
 function renderChats(){const l=$('#lst');if(!l)return;
- l.replaceChildren(...(CH.length?CH.map(c=>{const dm=c.type==='dm';return el('div',{c:'it',on:{click:()=>openChat(c)}},dm?av(P[c.peer]||{}):gav(c),
-  el('div',{style:'flex:1;min-width:0'},el('b',{},cname(c)),el('small',{},dm?'Direct message':c.type==='public_group'?'Public group':'Private group')),U[c.id]&&el('i',{c:'dot'}))}):[el('p',{style:'padding:16px;color:var(--t2)'},'No chats yet. Find friends or join a group.')]))}
+ l.replaceChildren(...(CH.length?CH.map(c=>{const dm=c.type==='dm';
+  const row=el('div',{c:'it'},dm?av(P[c.peer]||{}):gav(c),
+   el('div',{style:'flex:1;min-width:0',on:{click:()=>openChat(c)}},el('b',{},cname(c)),el('small',{},dm?'Direct message':c.type==='public_group'?'Public group':'Private group')),
+   U[c.id]&&el('i',{c:'dot'}),
+   el('button',{title:dm?'Remove chat':'Leave group',style:'background:none;padding:4px 6px;color:var(--t2);font-size:16px',on:{click:e=>{e.stopPropagation();dm?removeDM(c):leaveGroupById(c)}}},dm?'✕':'🚪'));
+  row.addEventListener('click',()=>openChat(c));return row}):[el('p',{style:'padding:16px;color:var(--t2)'},'No chats yet. Find friends or join a group.')]))}
+
+async function leaveGroupById(c){if(!confirm('Leave "'+c.name+'"?'))return;
+ const{error}=await SB.rpc('leave_group',{cid:c.id});if(error)return toast(error.message);
+ if(cur&&cur.id===c.id){cur=null;MSG=[];$('#app').classList.remove('co');$('#main').replaceChildren()}
+ loadChats()}
 
 async function loadFriends(){const{data}=await SB.from('friendships').select('*');F=data||[];await need(F.map(f=>f.requester_id===me.id?f.addressee_id:f.requester_id));tabs()}
 async function addFriend(id){const{error}=await SB.from('friendships').insert({requester_id:me.id,addressee_id:id});toast(error?(error.code==='23505'?'Already requested or already friends':error.message):'Request sent');loadFriends()}
