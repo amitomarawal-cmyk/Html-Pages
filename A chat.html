@@ -44,8 +44,8 @@ a{color:var(--p)}
 small{color:var(--t2);font-size:11px}
 .cmp{display:flex;gap:8px;padding:10px;border-top:1px solid var(--b);align-items:flex-end}
 .cmp textarea{resize:none;max-height:120px}
-.row .x{display:none;background:none;padding:0 4px;color:var(--t2)}
-.row:hover .x{display:inline}
+.row .x{background:none;padding:0 4px;color:var(--t2);opacity:.6;align-self:center}
+.more{align-self:center;font-size:13px}
 .ov{position:fixed;inset:0;background:#0007;display:flex;align-items:center;justify-content:center;z-index:9}
 .md{background:var(--bg);border-radius:14px;padding:16px;width:min(420px,92vw);max-height:85vh;overflow:auto;display:flex;flex-direction:column;gap:10px}
 #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:8px 16px;border-radius:20px;display:none;z-index:99;max-width:90vw}
@@ -58,7 +58,7 @@ small{color:var(--t2);font-size:11px}
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
 const SB=supabase.createClient('https://htlqcdvpiwjppfmtpvma.supabase.co','sb_publishable_w4h6CcWe_i1_orGDrRmzvg_N4CtOPzp');
-let me,cur,CH=[],F=[],P={},U={},view='chats';
+let me,cur,CH=[],F=[],U={},view='chats',MSG=[],more=false,P={};try{P=JSON.parse(localStorage.getItem('P')||'{}')}catch{}
 const MAXF=50*1048576,$=s=>document.querySelector(s),em=u=>u.toLowerCase()+'@chatapp.local';
 function el(t,a,...k){const e=document.createElement(t);for(const x in a||{}){const v=a[x];if(x==='on')for(const n in v)e.addEventListener(n,v[n]);else if(x==='c')e.className=v;else if(x==='style')e.style.cssText=v;else if(x in e)e[x]=v;else e.setAttribute(x,v)}for(const c of k.flat())if(c)e.append(c);return e}
 const toast=m=>{const t=$('#toast');t.textContent=m;t.style.display='block';clearTimeout(t._t);t._t=setTimeout(()=>t.style.display='none',3500)};
@@ -68,7 +68,12 @@ const cname=c=>c.type==='dm'?(P[c.peer]?.username||'Chat'):c.name;
 const sz=n=>n<1024?n+' B':n<1048576?(n/1024).toFixed(0)+' KB':n<1073741824?(n/1048576).toFixed(1)+' MB':(n/1073741824).toFixed(2)+' GB';
 const tm=x=>new Date(x).toLocaleString([],{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
 const theme=t=>{document.documentElement.dataset.t=t;localStorage.setItem('t',t)};
-async function need(ids){ids=[...new Set(ids)].filter(i=>i&&!P[i]);if(!ids.length)return;const{data}=await SB.from('profiles').select('id,username,avatar_letter,avatar_color').in('id',ids);(data||[]).forEach(p=>P[p.id]=p)}
+const DB=new Promise(r=>{try{const q=indexedDB.open('chat',1);q.onupgradeneeded=()=>q.result.createObjectStore('c');q.onsuccess=()=>r(q.result);q.onerror=()=>r(null)}catch{r(null)}});
+const idb=async(m,f)=>{const d=await DB;return d?new Promise(r=>{try{const q=f(d.transaction('c',m).objectStore('c'));q.onsuccess=()=>r(q.result);q.onerror=()=>r()}catch{r()}}):undefined};
+const cget=k=>idb('readonly',s=>s.get(k)),cset=(k,v)=>idb('readwrite',s=>s.put(v,k)),cdel=k=>idb('readwrite',s=>s.delete(k)),ckeys=()=>idb('readonly',s=>s.getAllKeys());
+const ck=id=>me.id+':'+id,cput=()=>cur&&cset(ck(cur.id),MSG.slice(-1000));
+async function wipe(){const d=await DB;d&&d.close();localStorage.removeItem('P');await new Promise(r=>{try{const q=indexedDB.deleteDatabase('chat');q.onsuccess=q.onerror=q.onblocked=()=>r()}catch{r()}})}
+async function need(ids){ids=[...new Set(ids)].filter(i=>i&&!P[i]);if(!ids.length)return;const{data}=await SB.from('profiles').select('id,username,avatar_letter,avatar_color').in('id',ids);(data||[]).forEach(p=>P[p.id]=p);try{localStorage.setItem('P',JSON.stringify(P))}catch{}}
 function modal(title,...k){const o=el('div',{c:'ov',on:{click:e=>e.target===o&&o.remove()}},el('div',{c:'md'},el('div',{c:'hd',style:'padding:0;border:0'},el('h2',{},title),el('button',{on:{click:()=>o.remove()}},'✕')),...k));document.body.append(o);return o}
 
 /* ---------- device id ---------- */
@@ -102,8 +107,8 @@ async function start(user){
  await Promise.all([loadChats(),loadFriends()]);
  SB.channel('rt')
   .on('postgres_changes',{event:'INSERT',schema:'public',table:'messages'},async p=>{const m=p.new;await need([m.sender_id]);
-    if(cur&&m.conversation_id===cur.id)addMsg(m);else{U[m.conversation_id]=1;CH.some(c=>c.id===m.conversation_id)?view==='chats'&&renderChats():loadChats()}})
-  .on('postgres_changes',{event:'DELETE',schema:'public',table:'messages'},p=>document.getElementById('m'+p.old.id)?.remove())
+    if(cur&&m.conversation_id===cur.id)addMsg(m);else{U[m.conversation_id]=1;const k=ck(m.conversation_id),a=await cget(k);if(a&&!a.some(x=>x.id===m.id)){a.push(m);cset(k,a.slice(-1000))}CH.some(c=>c.id===m.conversation_id)?view==='chats'&&renderChats():loadChats()}})
+  .on('postgres_changes',{event:'DELETE',schema:'public',table:'messages'},p=>gone(p.old.id))
   .on('postgres_changes',{event:'*',schema:'public',table:'friendships'},()=>loadFriends())
   .on('postgres_changes',{event:'*',schema:'public',table:'conversation_members'},()=>loadChats())
   .subscribe()}
@@ -117,11 +122,16 @@ function tabs(){const t=$('#tabs');if(!t)return;const pend=F.some(f=>f.status===
 function render(){({chats:renderChats,friends:renderFriends,groups:renderGroups})[view]()}
 
 async function loadChats(){
- const{data:ms}=await SB.from('conversation_members').select('conversations(id,type,name,creator_id)').eq('user_id',me.id);
+ if(!CH.length){const a=await cget('CH:'+me.id);if(a){CH=a;if(view!=='friends')render()}}
+ const{data:ms,error}=await SB.from('conversation_members').select('conversations(id,type,name,creator_id)').eq('user_id',me.id);
+ if(error)return;
  CH=(ms||[]).map(x=>x.conversations).filter(Boolean);
  const dm=CH.filter(c=>c.type==='dm').map(c=>c.id);
  if(dm.length){const{data:o}=await SB.from('conversation_members').select('conversation_id,user_id').in('conversation_id',dm).neq('user_id',me.id);
   await need((o||[]).map(x=>x.user_id));(o||[]).forEach(x=>{const c=CH.find(c=>c.id===x.conversation_id);if(c)c.peer=x.user_id})}
+ cset('CH:'+me.id,CH);
+ ((await ckeys())||[]).filter(k=>k.startsWith(me.id+':')&&!CH.some(c=>k===ck(c.id))).forEach(cdel);
+ if(cur&&!CH.some(c=>c.id===cur.id)){cur=null;MSG=[];$('#app').classList.remove('co');$('#main').replaceChildren()}
  if(view!=='friends')render()}
 function renderChats(){const l=$('#lst');if(!l)return;
  l.replaceChildren(...(CH.length?CH.map(c=>{const dm=c.type==='dm';return el('div',{c:'it',on:{click:()=>openChat(c)}},dm?av(P[c.peer]||{}):gav(c),
@@ -144,7 +154,7 @@ function renderFriends(){const l=$('#lst');if(!l)return;
   out.length&&el('b',{style:'padding:8px;display:block'},'Sent requests'),
   ...out.map(f=>row(P[oth(f)]||{},el('small',{},'Pending'),rm(f))),
   el('b',{style:'padding:8px;display:block'},'Friends ('+fr.length+')'),
-  ...fr.map(f=>{const p=P[oth(f)]||{},r=row(p,rm(f));r.style.cursor='pointer';r.onclick=e=>{if(!e.target.closest('button'))openDM(p.id)};return r})].filter(Boolean))}
+  ...fr.map(f=>{const p=P[oth(f)]||{},r=row(p,el('button',{on:{click:async()=>{if(!confirm('Unfriend '+p.username+'? Your chat with them will be deleted for both of you.'))return;const{error}=await SB.rpc('unfriend',{other:p.id});if(error)return toast(error.message);await loadFriends();loadChats()}}},'Unfriend'));r.style.cursor='pointer';r.onclick=e=>{if(!e.target.closest('button'))openDM(p.id)};return r})].filter(Boolean))}
 
 async function joinOpen(c){if(!CH.some(x=>x.id===c.id)){const{error}=await SB.rpc('join_public_group',{cid:c.id});if(error)return toast(error.message);await loadChats()}openChat(CH.find(x=>x.id===c.id)||c)}
 async function renderGroups(){const l=$('#lst');if(!l)return;
@@ -155,7 +165,7 @@ async function renderGroups(){const l=$('#lst');if(!l)return;
  box.replaceChildren(...(data||[]).map(c=>el('div',{c:'it',on:{click:()=>joinOpen(c)}},gav(c),el('b',{style:'flex:1'},c.name),el('small',{},CH.some(x=>x.id===c.id)?'Joined':'Join'))))}
 
 /* ---------- chat ---------- */
-async function openChat(c){if(!c)return;cur=c;U[c.id]=0;$('#app').classList.add('co');const dm=c.type==='dm';
+async function openChat(c){if(!c)return;cur=c;MSG=[];more=false;U[c.id]=0;$('#app').classList.add('co');const dm=c.type==='dm';
  $('#main').replaceChildren(
   el('div',{c:'hd'},el('button',{c:'bk',on:{click:()=>{cur=null;$('#app').classList.remove('co')}}},'←'),dm?av(P[c.peer]||{},36):gav(c,36),el('h2',{style:'font-size:17px'},cname(c)),!dm&&el('button',{on:{click:info}},'ⓘ')),
   el('div',{id:'msgs'}),el('small',{id:'st',style:'padding:0 14px'}),
@@ -164,13 +174,30 @@ async function openChat(c){if(!c)return;cur=c;U[c.id]=0;$('#app').classList.add(
    el('textarea',{id:'ta',rows:1,placeholder:'Message',on:{keydown:e=>{if(e.key==='Enter'&&!e.shiftKey&&!/Mobi|Android/i.test(navigator.userAgent)){e.preventDefault();send()}}}}),
    el('button',{c:'pr',on:{click:send}},'Send')));
  if(view==='chats')renderChats();
+ const cache=((await cget(ck(c.id)))||[]).filter(m=>new Date(m.expires_at)>Date.now());
+ await need(cache.map(m=>m.sender_id));if(cur!==c)return;
+ MSG=cache;draw(true);
  const{data,error}=await SB.from('messages').select('*').eq('conversation_id',c.id).order('id',{ascending:false}).limit(100);
- if(error)return toast(error.message);const ms=(data||[]).reverse();await need(ms.map(m=>m.sender_id));if(cur!==c)return;
- ms.forEach(m=>addMsg(m));const b=$('#msgs');b.scrollTop=b.scrollHeight}
+ if(error)return toast('Offline: showing saved messages');
+ const sv=data.reverse();await need(sv.map(m=>m.sender_id));if(cur!==c)return;
+ const all=[...(sv.length<100?[]:cache.filter(m=>m.id<sv[0].id)),...sv];more=sv.length===100;
+ const same=all.length===MSG.length&&all.every((m,i)=>m.id===MSG[i].id);
+ MSG=all;if(!same||more)draw(!same);cput()}
+function draw(bottom){const b=$('#msgs');if(!b)return;b.replaceChildren(...(more?[el('button',{c:'more',on:{click:older}},'Load older messages')]:[]));MSG.forEach(m=>paint(m,1));if(bottom)b.scrollTop=b.scrollHeight}
+async function older(){const c=cur,b=$('#msgs'),first=MSG[0]?.id;if(!first)return;
+ const{data,error}=await SB.from('messages').select('*').eq('conversation_id',c.id).lt('id',first).order('id',{ascending:false}).limit(100);
+ if(error)return toast(error.message);if(cur!==c)return;
+ const o=data.reverse();await need(o.map(m=>m.sender_id));more=data.length===100;
+ const h=b.scrollHeight;MSG=[...o,...MSG];draw();b.scrollTop=b.scrollHeight-h;cput()}
+const gone=id=>{MSG=MSG.filter(x=>x.id!==id);cput();document.getElementById('m'+id)?.remove()};
+function delMsg(m){const o=modal('Delete message',
+ el('button',{on:{click:async()=>{const{error}=await SB.from('message_hides').insert({user_id:me.id,message_id:m.id});if(error)return toast(error.message);gone(m.id);o.remove()}}},'Delete for me'),
+ m.sender_id===me.id&&el('button',{style:'color:#e53935',on:{click:async()=>{const{error}=await SB.from('messages').delete().eq('id',m.id);if(error)return toast(error.message);gone(m.id);o.remove()}}},'Delete for everyone'))}
 
 async function url(m,d){const{data}=await SB.storage.from('chat-files').createSignedUrl(m.file_path,3600,d?{download:m.file_name}:undefined);return data?.signedUrl}
 async function dl(m){const u=await url(m,1);u?location.href=u:toast('File not available')}
-function addMsg(m){const b=$('#msgs');if(!b||document.getElementById('m'+m.id))return;
+function addMsg(m){if(!MSG.some(x=>x.id===m.id)){MSG.push(m);cput()}paint(m)}
+function paint(m,q){const b=$('#msgs');if(!b||document.getElementById('m'+m.id))return;
  const mine=m.sender_id===me.id,s=P[m.sender_id]||{},bub=el('div',{c:'bub'}),near=b.scrollHeight-b.scrollTop-b.clientHeight<150;
  if(m.file_path){
   if(m.kind==='image'||m.kind==='video'){const w=el('div',{c:'med'},'Loading...');bub.append(w);
@@ -180,8 +207,8 @@ function addMsg(m){const b=$('#msgs');if(!b||document.getElementById('m'+m.id))r
  if(m.body)bub.append(el('div',{c:'tx'},m.body));
  b.append(el('div',{c:'row'+(mine?' me':''),id:'m'+m.id},mine?null:av(s,28),
   el('div',{c:'col'},!mine&&cur.type!=='dm'&&el('small',{},s.username),bub,el('small',{},tm(m.created_at))),
-  mine&&el('button',{c:'x',title:'Delete',on:{click:async()=>{const{error}=await SB.from('messages').delete().eq('id',m.id);error?toast(error.message):document.getElementById('m'+m.id)?.remove()}}},'🗑')));
- if(near||mine)b.scrollTop=b.scrollHeight}
+  el('button',{c:'x',title:'Delete',on:{click:()=>delMsg(m)}},'🗑')));
+ if(!q&&(near||mine))b.scrollTop=b.scrollHeight}
 
 async function send(){const ta=$('#ta');if(!ta||!cur)return;const t=ta.value.trim(),c=cur;if(!t)return;ta.value='';
  if(t.length>100000)return upFile(new File([t],'long-text.txt',{type:'text/plain'}));
@@ -207,8 +234,8 @@ async function info(){const c=cur,{data}=await SB.from('conversation_members').s
 function settings(){modal('Settings',el('b',{},'Theme'),
  el('div',{style:'display:flex;gap:10px;flex-wrap:wrap'},...[['blue','#0084ff'],['green','#31a24c'],['dark','#18191a'],['sepia','#c9a66b'],['pink','#e91e8c'],['white','#fff']].map(([t,c])=>el('button',{c:'sw',title:t,style:`background:${c};border:3px solid var(--b)`,on:{click:()=>{theme(t);SB.from('profiles').update({theme:t}).eq('id',me.id)}}}))),
  el('small',{},'Signed in as '+me.username+'. Account auto-deletes after 5 years.'),
- el('button',{on:{click:async()=>{await SB.auth.signOut();location.reload()}}},'Log out'),
- el('button',{style:'color:#e53935',on:{click:async()=>{if(!confirm('Delete your account and all your messages forever?'))return;const{error}=await SB.rpc('delete_my_account');if(error)return toast(error.message);await SB.auth.signOut();location.reload()}}},'Delete account'))}
+ el('button',{on:{click:async()=>{await SB.auth.signOut();await wipe();location.reload()}}},'Log out'),
+ el('button',{style:'color:#e53935',on:{click:async()=>{if(!confirm('Delete your account and all your messages forever?'))return;const{error}=await SB.rpc('delete_my_account');if(error)return toast(error.message);await SB.auth.signOut();await wipe();location.reload()}}},'Delete account'))}
 
 theme(localStorage.getItem('t')||'blue');boot();
 </script></body></html>
