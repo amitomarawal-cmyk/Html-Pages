@@ -82,7 +82,10 @@ const idb=async(m,f)=>{const d=await DB;return d?new Promise(r=>{try{const q=f(d
 const cget=k=>idb('readonly',s=>s.get(k)),cset=(k,v)=>idb('readwrite',s=>s.put(v,k)),cdel=k=>idb('readwrite',s=>s.delete(k)),ckeys=()=>idb('readonly',s=>s.getAllKeys());
 const ck=id=>me.id+':'+id,cput=()=>cur&&cset(ck(cur.id),MSG.slice(-1000));
 async function wipe(){const d=await DB;d&&d.close();localStorage.removeItem('P');await new Promise(r=>{try{const q=indexedDB.deleteDatabase('chat');q.onsuccess=q.onerror=q.onblocked=()=>r()}catch{r()}})}
-async function need(ids){ids=[...new Set(ids)].filter(i=>i&&!P[i]);if(!ids.length)return;const{data}=await SB.from('profiles').select('id,username,avatar_letter,avatar_color').in('id',ids);(data||[]).forEach(p=>P[p.id]=p);try{localStorage.setItem('P',JSON.stringify(P))}catch{}}
+async function need(ids){ids=[...new Set(ids)].filter(i=>i&&!P[i]);if(!ids.length)return;const{data}=await SB.from('profiles').select('id,username,avatar_letter,avatar_color').in('id',ids);(data||[]).forEach(p=>P[p.id]=p);
+ // keep profile cache lean: max 200 entries (keep me + friends + recent)
+ const keys=Object.keys(P);if(keys.length>200){const keep=new Set([me?.id,...F.map(f=>f.requester_id===me?.id?f.addressee_id:f.requester_id)]);keys.filter(k=>!keep.has(k)).slice(0,keys.length-200).forEach(k=>delete P[k])}
+ try{localStorage.setItem('P',JSON.stringify(P))}catch{}}
 function modal(title,...k){const o=el('div',{c:'ov',on:{click:e=>e.target===o&&o.remove()}},el('div',{c:'md'},el('div',{c:'hd',style:'padding:0;border:0'},el('h2',{},title),el('button',{on:{click:()=>o.remove()}},'✕')),...k));document.body.append(o);return o}
 
 /* ---------- device id ---------- */
@@ -218,10 +221,24 @@ function createGroupModal(){
  mk=el('button',{c:'pr',on:{click:async()=>{if(!nm.value.trim())return;const{data,error}=await SB.rpc('create_group',{gname:nm.value,is_public:pub.checked});if(error)return toast(error.message);o.remove();await loadChats();openChat(CH.find(c=>c.id===data))}}},'Create');
  const o=modal('Create Group',nm,el('label',{style:'display:flex;gap:8px;align-items:center'},pub,' Public (anyone can search and join)'),mk)}
 
+/* ---------- Remove DM chat (leaves conversation_members, clears cache) ---------- */
+async function removeDM(c){
+ if(!confirm('Remove this chat from your list? Friendship stays. You can re-open it from Friends tab.'))return;
+ // remove from conversation_members — cleans DB row
+ await SB.from('conversation_members').delete().eq('conversation_id',c.id).eq('user_id',me.id);
+ // clear local cache for this chat
+ await cdel(ck(c.id));
+ delete U[c.id];
+ cur=null;MSG=[];
+ $('#app').classList.remove('co');
+ $('#main').replaceChildren();
+ await loadChats()}
+
 /* ---------- chat ---------- */
 async function openChat(c){if(!c)return;cur=c;MSG=[];more=false;U[c.id]=0;$('#app').classList.add('co');const dm=c.type==='dm';
  $('#main').replaceChildren(
   el('div',{c:'hd'},el('button',{c:'bk',on:{click:()=>{cur=null;$('#app').classList.remove('co')}}},'←'),dm?av(P[c.peer]||{},36):gav(c,36),el('h2',{style:'font-size:17px'},cname(c)),
+  dm&&el('button',{title:'Remove chat',style:'color:#e53935',on:{click:()=>removeDM(c)}},'✕'),
   !dm&&el('button',{on:{click:info}},'ⓘ'),
   !dm&&el('button',{title:'Leave group',style:'color:#e53935',on:{click:leaveGroup}},'Leave')),
   el('div',{id:'msgs'}),el('small',{id:'st',style:'padding:0 14px'}),
