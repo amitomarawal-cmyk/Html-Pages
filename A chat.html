@@ -156,12 +156,28 @@ function modal(title, ...kids) {
 /* ═══════════════════════════════════════════════════
    NOTIFICATIONS
 ═══════════════════════════════════════════════════ */
-if ('Notification' in window && Notification.permission === 'default') {
-  Notification.requestPermission();
+async function askNotifPermission() {
+  if (!('Notification' in window)) return;
+  if (Notification.permission === 'default') {
+    await Notification.requestPermission();
+  }
 }
-function pushNotif(title, body) {
+function pushNotif(title, body, convId) {
   if (!('Notification' in window) || Notification.permission !== 'granted') return;
-  try { new Notification(title, {body, icon:'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 40 40%22><circle cx=%2220%22 cy=%2220%22 r=%2220%22 fill=%22%230084ff%22/><text x=%2250%25%22 y=%2256%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2222%22>C</text></svg>'}) } catch {}
+  if (document.visibilityState === 'visible' && cur?.id === convId) return; // ইতিমধ্যে সেই chat খোলা
+  try {
+    const n = new Notification(title, {
+      body,
+      icon: 'data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 40 40%22><circle cx=%2220%22 cy=%2220%22 r=%2220%22 fill=%22%230084ff%22/><text x=%2250%25%22 y=%2256%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22white%22 font-size=%2222%22>C</text></svg>',
+      tag: convId ? 'conv-'+convId : 'friend-req', // একই chat-এর multiple notification stack হবে না
+      renotify: true
+    });
+    if (convId) n.onclick = () => {
+      window.focus();
+      const c = CH.find(x=>x.id===convId);
+      if (c) { view='chats'; tabs(); openChat(c) }
+    };
+  } catch {}
 }
 
 /* ═══════════════════════════════════════════════════
@@ -313,6 +329,7 @@ async function start(user) {
   const t = me.theme || localStorage.getItem('t') || 'blue';
   theme(t); localStorage.setItem('t', t);
   shell();
+  askNotifPermission();
   await Promise.all([loadChats(), loadFriends()]);
 
   // ── Realtime ──
@@ -331,7 +348,7 @@ async function start(user) {
         const sender = P[m.sender_id] || {};
         const conv = CH.find(c=>c.id===m.conversation_id);
         const title = conv ? (conv.type==='dm' ? (sender.username||'Someone') : (conv.name+' — '+(sender.username||'?'))) : 'New message';
-        pushNotif(title, m.body || '📎 File');
+        pushNotif(title, m.body || '📎 File', m.conversation_id);
         // move chat to top
         if (CH.some(c=>c.id===m.conversation_id)) {
           const idx = CH.findIndex(c=>c.id===m.conversation_id);
@@ -341,9 +358,33 @@ async function start(user) {
       }
     })
     .on('postgres_changes', {event:'DELETE', schema:'public', table:'messages'}, p => gone(p.old.id))
-    .on('postgres_changes', {event:'*', schema:'public', table:'friendships'}, () => loadFriends())
+    .on('postgres_changes', {event:'INSERT', schema:'public', table:'friendships'}, async p => {
+      const f = p.new;
+      // শুধু আমার কাছে request এলে notification
+      if (f.addressee_id === me.id) {
+        await need([f.requester_id]);
+        const sender = P[f.requester_id] || {};
+        pushNotif('Friend Request 👋', (sender.username||'Someone')+' sent you a friend request');
+        await loadFriends();
+        // Friends tab-এ dot দেখাবে
+        tabs();
+      }
+    })
+    .on('postgres_changes', {event:'UPDATE', schema:'public', table:'friendships'}, async p => {
+      const f = p.new;
+      // আমার request accept হলে notification
+      if (f.requester_id === me.id && f.status === 'accepted') {
+        await need([f.addressee_id]);
+        const other = P[f.addressee_id] || {};
+        pushNotif('Friend Request Accepted ✅', (other.username||'Someone')+' accepted your request');
+      }
+      await loadFriends();
+    })
+    .on('postgres_changes', {event:'DELETE', schema:'public', table:'friendships'}, () => loadFriends())
     .on('postgres_changes', {event:'*', schema:'public', table:'conversation_members'}, () => loadChats())
-    .subscribe();
+    .subscribe(status => {
+      if (status === 'SUBSCRIBED') console.log('Realtime connected ✓');
+    });
 }
 
 /* ═══════════════════════════════════════════════════
@@ -596,8 +637,16 @@ async function openChat(c) {
 function draw(bottom) {
   const b=$('#msgs'); if(!b) return;
   b.replaceChildren(...(more?[el('button',{c:'more',on:{click:older}},'↑ Load older messages')]:[]));
-  MSG.forEach(m=>paint(m,true));
-  if(bottom) b.scrollTop=b.scrollHeight;
+  // incremental render — প্রতি frame-এ 10টা করে paint করে, RAM ও UI freeze কমায়
+  const msgs=[...MSG];
+  let i=0;
+  function batch(){
+    const end=Math.min(i+10, msgs.length);
+    for(;i<end;i++) paint(msgs[i],true);
+    if(i<msgs.length) requestAnimationFrame(batch);
+    else if(bottom) b.scrollTop=b.scrollHeight;
+  }
+  requestAnimationFrame(batch);
 }
 
 async function older() {
@@ -623,6 +672,15 @@ function addMsg(m) {
   if(view==='chats') renderChats();
 }
 
+// IntersectionObserver — viewport-এ ঢুকলে তবেই media load
+const mediaObs = new IntersectionObserver(entries=>{
+  entries.forEach(e=>{
+    if(e.isIntersecting && e.target._load){
+      e.target._load(); e.target._load=null; mediaObs.unobserve(e.target);
+    }
+  });
+},{rootMargin:'200px'}); // 200px আগে থেকেই load শুরু
+
 function paint(m, quiet) {
   const b=$('#msgs'); if(!b||document.getElementById('m'+m.id)) return;
   const mine=m.sender_id===me.id, s=P[m.sender_id]||{};
@@ -631,10 +689,27 @@ function paint(m, quiet) {
 
   if(m.file_path){
     if(m.kind==='image'||m.kind==='video'){
-      const w=el('div',{c:'med'},'Loading…'); bub.append(w);
-      getUrl(m).then(u=>{w.textContent='';if(u)w.append(m.kind==='image'?el('img',{src:u,on:{click:()=>window.open(u)}}):el('video',{src:u,controls:true,preload:'metadata'}))});
+      // placeholder — lazy load করবে
+      const w=el('div',{c:'med',style:'min-height:60px;background:var(--s);border-radius:12px;display:flex;align-items:center;justify-content:center;color:var(--t2);font-size:13px'},'⏳');
+      w._load = ()=>{
+        getUrl(m).then(u=>{
+          if(!u){w.textContent='❌';return}
+          w.textContent='';
+          if(m.kind==='image'){
+            const img=el('img',{src:u,on:{click:()=>window.open(u)}});
+            img.onload=()=>{w.style.minHeight='';};
+            w.append(img);
+          } else {
+            w.style.minHeight='';
+            w.append(el('video',{src:u,controls:true,preload:'metadata'}));
+          }
+        });
+      };
+      mediaObs.observe(w);
+      bub.append(w);
     }
-    bub.append(el('a',{href:'#',c:'file',on:{click:e=>{e.preventDefault();dlFile(m)}}}, (m.kind==='image'||m.kind==='video'?'⬇ ':'📄 ')+m.file_name+' ('+sz(m.file_size||0)+')'));
+    bub.append(el('a',{href:'#',c:'file',on:{click:e=>{e.preventDefault();dlFile(m)}}},
+      (m.kind==='image'||m.kind==='video'?'⬇ ':'📄 ')+m.file_name+' ('+sz(m.file_size||0)+')'));
   }
   if(m.body) bub.append(el('div',{c:'tx'},m.body));
 
@@ -649,7 +724,27 @@ function paint(m, quiet) {
   if(!quiet&&(near||mine)) b.scrollTop=b.scrollHeight;
 }
 
-async function getUrl(m){const{data}=await SB.storage.from('chat-files').createSignedUrl(m.file_path,3600);return data?.signedUrl}
+/* ── Media URL Cache (IndexedDB, 50min TTL) ── */
+const MDB = new Promise(res=>{
+  try{const r=indexedDB.open('mcache',1);r.onupgradeneeded=()=>r.result.createObjectStore('u');r.onsuccess=()=>res(r.result);r.onerror=()=>res(null)}catch{res(null)}
+});
+const midb=async(mode,fn)=>{const d=await MDB;if(!d)return;return new Promise(res=>{try{const q=fn(d.transaction('u',mode).objectStore('u'));q.onsuccess=()=>res(q.result);q.onerror=()=>res()}catch{res()}})};
+const mget=k=>midb('readonly',s=>s.get(k));
+const mset=(k,v)=>midb('readwrite',s=>s.put(v,k));
+
+async function getUrl(m) {
+  const key = 'u:'+m.file_path;
+  const cached = await mget(key);
+  // cache hit: URL এখনো valid (expire হয়নি)
+  if (cached && cached.exp > Date.now()) return cached.url;
+  // cache miss: নতুন signed URL নাও
+  const {data} = await SB.storage.from('chat-files').createSignedUrl(m.file_path, 3600);
+  if (data?.signedUrl) {
+    await mset(key, {url:data.signedUrl, exp:Date.now()+50*60*1000}); // 50 min cache
+    return data.signedUrl;
+  }
+  return null;
+}
 async function dlFile(m){const u=await getUrl(m);u?location.href=u:toast('File unavailable')}
 
 function delMsg(m) {
